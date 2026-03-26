@@ -15,7 +15,7 @@ docker compose up -d
 ```
 
 This will start:
-- **PostgreSQL** — metadata database
+- **PostgreSQL** — metadata database (default)
 - **NATS** — JetStream message queue (optional, for event streaming)
 - **WA-RS API** — the REST API server
 
@@ -24,12 +24,10 @@ This will start:
 Create a `.env` file to customize settings:
 
 ```bash
-# PostgreSQL
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your-secure-password
-POSTGRES_DB=wagateway
+# Database — choose one:
+DATABASE_URL=postgres://postgres:your-password@postgres:5432/wagateway
+# DATABASE_URL=mysql://user:password@host:3306/wagateway
+# DATABASE_URL=sqlite://wa-rs.db
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
@@ -58,7 +56,7 @@ To run **without NATS**, remove or comment out the `NATS_URL` line — the API w
 ### Prerequisites
 
 - Rust 1.75 or later
-- PostgreSQL 14 or later
+- One of: PostgreSQL 14+, MySQL 8+, or SQLite 3
 - OpenSSL development libraries
 
 ### Ubuntu/Debian
@@ -70,8 +68,7 @@ sudo apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
-    libsqlite3-dev \
-    postgresql
+    libsqlite3-dev
 
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -88,12 +85,33 @@ cargo build --release
 
 ### Database Setup
 
+WA-RS supports **PostgreSQL**, **MySQL**, and **SQLite**. Choose one:
+
+#### PostgreSQL
+
 ```bash
 # Create database
 sudo -u postgres createdb wagateway
 
-# Or connect and create
-psql -U postgres -c "CREATE DATABASE wagateway;"
+# Set DATABASE_URL
+DATABASE_URL=postgres://postgres:password@localhost:5432/wagateway
+```
+
+#### MySQL
+
+```bash
+# Create database
+mysql -u root -p -e "CREATE DATABASE wagateway;"
+
+# Set DATABASE_URL
+DATABASE_URL=mysql://root:password@localhost:3306/wagateway
+```
+
+#### SQLite (simplest — no server needed)
+
+```bash
+# Just set the path — the file will be created automatically
+DATABASE_URL=sqlite://wa-rs.db
 ```
 
 ### Configuration
@@ -105,14 +123,26 @@ cp .env.example .env
 Edit `.env`:
 
 ```bash
+# Pick your database
+DATABASE_URL=postgres://postgres:your-password@localhost:5432/wagateway
+
+# JWT
+JWT_SECRET=your-secret-key
+
+# Storage
+WHATSAPP_STORAGE_PATH=./whatsapp_sessions
+```
+
+:::info Legacy PostgreSQL Config
+If you don't set `DATABASE_URL`, WA-RS falls back to the legacy `POSTGRES_*` environment variables for backward compatibility:
+```bash
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-password
 POSTGRES_DB=wagateway
-JWT_SECRET=your-secret-key
-WHATSAPP_STORAGE_PATH=./whatsapp_sessions
 ```
+:::
 
 ### Run
 
@@ -126,15 +156,21 @@ cargo run
 
 ## Environment Variables
 
+### Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | *(none)* | Database connection URL (postgres/mysql/sqlite) |
+| `POSTGRES_HOST` | localhost | PostgreSQL host (legacy fallback) |
+| `POSTGRES_PORT` | 5432 | PostgreSQL port (legacy fallback) |
+| `POSTGRES_USER` | postgres | PostgreSQL user (legacy fallback) |
+| `POSTGRES_PASSWORD` | postgres | PostgreSQL password (legacy fallback) |
+| `POSTGRES_DB` | wagateway | PostgreSQL database (legacy fallback) |
+
 ### Core
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `POSTGRES_HOST` | localhost | PostgreSQL host |
-| `POSTGRES_PORT` | 5432 | PostgreSQL port |
-| `POSTGRES_USER` | postgres | PostgreSQL user |
-| `POSTGRES_PASSWORD` | postgres | PostgreSQL password |
-| `POSTGRES_DB` | wagateway | PostgreSQL database |
 | `JWT_SECRET` | (random) | JWT signing secret |
 | `SUPERADMIN_TOKEN` | (random) | Fixed superadmin token (optional) |
 | `WHATSAPP_STORAGE_PATH` | ./whatsapp_sessions | Session storage path |

@@ -14,7 +14,7 @@ WA-RS is a multi-session WhatsApp REST API gateway built with Rust. It provides 
 - **Webhook support** - Receive events with HMAC-SHA256 signatures
 - **NATS JetStream** - Optional durable event streaming and outbound message queue
 - **JWT authentication** - Secure API access
-- **PostgreSQL database** - Persistent session storage
+- **Multi-database support** - PostgreSQL, MySQL, or SQLite via `DATABASE_URL`
 - **Swagger UI** - Interactive API documentation
 
 ## Quick Start
@@ -31,7 +31,7 @@ docker compose up -d
 
 1. **Requirements**
    - Rust 1.75+
-   - PostgreSQL 14+
+   - One of: PostgreSQL 14+, MySQL 8+, or SQLite 3
 
 2. **Clone and build**
    ```bash
@@ -43,7 +43,10 @@ docker compose up -d
 3. **Configure environment**
    ```bash
    cp .env.example .env
-   # Edit .env with your PostgreSQL credentials
+   # Edit .env — set DATABASE_URL for your database:
+   # DATABASE_URL=postgres://user:pass@localhost:5432/wagateway
+   # DATABASE_URL=mysql://user:pass@localhost:3306/wagateway
+   # DATABASE_URL=sqlite://wa-rs.db
    ```
 
 4. **Run**

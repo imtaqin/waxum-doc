@@ -16,7 +16,8 @@ WA-RS is a high-performance WhatsApp REST API Gateway built with Rust. It provid
 - **NATS JetStream** - Optional durable event streaming and queue-based outbound messaging
 - **RESTful API** - Simple JSON-based API with OpenAPI/Swagger documentation
 - **JWT Authentication** - Secure API access with token-based authentication
-- **Docker Ready** - Easy deployment with Docker and Docker Compose (PostgreSQL + NATS included)
+- **Multi-Database Support** - PostgreSQL, MySQL, and SQLite supported out of the box
+- **Docker Ready** - Easy deployment with Docker and Docker Compose
 
 ### Messaging Capabilities
 - **Text Messages** - Send plain text messages
@@ -75,8 +76,8 @@ WA-RS is a high-performance WhatsApp REST API Gateway built with Rust. It provid
 │  └──────────────────────────────────────────────────────────┘│
 ├──────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
-│  │   PostgreSQL    │  │  SQLite (WA)    │  │    NATS      │  │
-│  │   (Metadata)    │  │  (Sessions)     │  │  (Streams)   │  │
+│  │ PG / MySQL /    │  │  SQLite (WA)    │  │    NATS      │  │
+│  │ SQLite (Meta)   │  │  (Sessions)     │  │  (Streams)   │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -87,7 +88,7 @@ WA-RS is a high-performance WhatsApp REST API Gateway built with Rust. It provid
 |-----------|------------|
 | Language | Rust |
 | Web Framework | Axum 0.8 |
-| Database | PostgreSQL + SQLite |
+| Database | PostgreSQL, MySQL, or SQLite (via SQLx) |
 | Message Queue | NATS JetStream (optional) |
 | Authentication | JWT (jsonwebtoken) |
 | WhatsApp Protocol | wacore (custom) |
