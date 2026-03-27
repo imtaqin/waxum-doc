@@ -31,7 +31,7 @@ http://localhost:3451/api-docs/openapi.json
 ## Authentication in Swagger
 
 1. Click the **Authorize** button (lock icon) at the top
-2. Enter your Superadmin Token (shown in server logs at startup)
+2. Enter `Bearer YOUR_TOKEN` (your `SUPERADMIN_TOKEN` value or the JWT shown at startup)
 3. Click **Authorize**
 4. All subsequent requests will include the `Authorization: Bearer <token>` header
 
