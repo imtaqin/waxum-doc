@@ -3,7 +3,7 @@
 
 # Production
 /build
-
+web.sh
 # Generated files
 .docusaurus
 .cache-loader
