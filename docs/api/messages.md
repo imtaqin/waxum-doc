@@ -460,6 +460,81 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 
 ---
 
+## Send CTA URL Button
+
+Send a single call-to-action URL button. Tapping the button opens the URL in
+the user's browser. Built on native-flow so it reaches modern WhatsApp
+clients reliably (added in v0.5.0).
+
+```
+POST /api/v1/sessions/{session_id}/messages/cta-url
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "Check out our latest catalog",
+  "footer_text": "Powered by WA-RS",
+  "display_text": "Open website",
+  "url": "https://example.com/catalog",
+  "merchant_url": "https://example.com"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | Yes | Text shown above the button |
+| `footer_text` | string | No | Small text below the body |
+| `display_text` | string | Yes | Label rendered on the button (e.g. "Open website") |
+| `url` | string | Yes | URL the button opens |
+| `merchant_url` | string | No | Merchant URL shown in link preview UI on some clients. Falls back to `url` when omitted. |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Quick Reply Buttons
+
+Send 1–3 quick-reply buttons. Modern native-flow replacement for the legacy
+`ButtonsMessage` — more reliable across iOS and recent Android WhatsApp
+versions (added in v0.5.0).
+
+When the user taps a button, the configured `id` is delivered back via the
+`buttons_response` webhook event so you can route the reply.
+
+```
+POST /api/v1/sessions/{session_id}/messages/quick-reply
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "How can we help?",
+  "footer_text": "Reply anytime",
+  "buttons": [
+    { "id": "support",  "display_text": "Talk to support" },
+    { "id": "billing",  "display_text": "Billing question" },
+    { "id": "feedback", "display_text": "Leave feedback" }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | Yes | Text shown above the buttons |
+| `footer_text` | string | No | Small text below the body |
+| `buttons` | array | Yes | 1–3 quick reply buttons. WA clients clip beyond 3. |
+| `buttons[].id` | string | Yes | Internal ID returned to your webhook on tap |
+| `buttons[].display_text` | string | Yes | Label rendered on the button |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
 ## Send Newsletter Admin Invite
 
 Send a newsletter admin invitation.
