@@ -6,6 +6,72 @@ sidebar_position: 3
 
 Manage contacts and check WhatsApp availability.
 
+## List Stored Contacts (v0.6.1+)
+
+Paginated dump of the contact directory wa-rs has built locally for the
+session. Populated automatically as a side-effect of the event stream
+— no `usync` round-trip on read.
+
+```
+GET /api/v1/sessions/{session_id}/contacts
+```
+
+### Query Parameters
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `q` | string | — | Substring filter over `full_name`, `first_name`, `push_name`, `phone`, `business_name` |
+| `limit` | int | `100` | Page size, clamped 1–1000 |
+| `offset` | int | `0` | Page offset |
+
+### Response
+
+```json
+{
+  "contacts": [
+    {
+      "jid": "628xxxxxxxxxx@s.whatsapp.net",
+      "phone": "628xxxxxxxxxx",
+      "lid_jid": "20045283487834@lid",
+      "full_name": "John Doe",
+      "first_name": "John",
+      "push_name": "John",
+      "business_name": null,
+      "source": "appstate_sync",
+      "updated_at": "2026-06-11 14:32:08"
+    }
+  ],
+  "total": 1247,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+### `source` values
+
+| Value | Meaning |
+|-------|---------|
+| `appstate_sync` | Captured from a full appstate sync (initial backfill or remote re-sync). |
+| `appstate` | Incremental appstate mutation (single contact edited on the phone). |
+| `notification` | `<notification type="contacts"><update/>` server push. |
+| `push_name` | `PushNameUpdate` event (sender renamed themselves). |
+| `message` | Inbound message — phone + push_name surfaced from the wire. |
+
+::: tip Empty list right after pair?
+On a fresh pair the table starts empty and fills as appstate sync
+progresses + chats come in. WhatsApp doesn't expose the full
+address-book in one shot via the socket — this is the same model WA
+Web uses internally.
+:::
+
+::: warning Privacy
+The directory is **per session** and stored on your wa-rs database.
+Don't expose this endpoint to untrusted callers — `full_name` here is
+the saved name from the phone's address book.
+:::
+
+---
+
 ## Check on WhatsApp
 
 Check if phone numbers are registered on WhatsApp.
