@@ -1,0 +1,3724 @@
+# wa-rs — full docs
+
+> Concatenated markdown of all documentation pages. Source: https://doc.wars.imtaqin.id
+
+
+---
+
+# Source: /docs/intro.md
+
+
+---
+
+# Source: /docs/getting-started.md
+
+
+---
+
+# Source: /docs/installation.md
+
+
+---
+
+# Source: /docs/authentication.md
+
+
+---
+
+# Source: /docs/dashboard.md
+
+
+---
+
+# Source: /docs/api/sessions.md
+
+
+## List Sessions
+
+Get all sessions.
+
+```
+GET /api/v1/sessions
+```
+
+### Response
+
+```json
+{
+  "sessions": [
+    {
+      "id": "my-session",
+      "name": "My Account",
+      "status": "logged_in",
+      "is_logged_in": true
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+## Get Session
+
+Get a specific session by ID.
+
+```
+GET /api/v1/sessions/{session_id}
+```
+
+### Response
+
+```json
+{
+  "id": "my-session",
+  "name": "My Account",
+  "phone_number": "628123456789",
+  "push_name": "John Doe",
+  "status": "logged_in",
+  "is_logged_in": true
+}
+```
+
+---
+
+## Delete Session
+
+Delete a session and disconnect from WhatsApp.
+
+```
+DELETE /api/v1/sessions/{session_id}
+```
+
+### Cascade behaviour
+
+Session delete cascades on both storage layers:
+
+- **DB rows** — child rows in `webhooks`, `contacts`, and `webhook_dlq`
+  scoped to this `session_id` are dropped explicitly before the
+  `sessions` row is removed. This runs even on databases whose tables
+  were migrated in without an `ON DELETE CASCADE` constraint, so no
+  orphans are left behind.
+- **In-memory registry** — every webhook registration pointing at this
+  session is removed from the dispatcher, along with any open circuit
+  state for those URLs.
+- **Storage directory** — the on-disk session store under
+  `WHATSAPP_STORAGE_PATH/{session_id}` is unlinked.
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Session deleted"
+}
+```
+
+---
+
+## Get Session Status
+
+Get current connection status.
+
+```
+GET /api/v1/sessions/{session_id}/status
+```
+
+### Response
+
+```json
+{
+  "status": "logged_in",
+  "is_logged_in": true,
+  "phone_number": "628123456789",
+  "push_name": "John Doe"
+}
+```
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `disconnected` | Not connected |
+| `connecting` | Establishing connection |
+| `waiting_for_qr` | Waiting for QR code scan |
+| `waiting_for_pair_code` | Waiting for pair code entry |
+| `connected` | Connected but not logged in |
+| `logged_in` | Fully authenticated |
+
+---
+
+## Get QR Code
+
+Get QR codes for authentication.
+
+```
+GET /api/v1/sessions/{session_id}/qr
+```
+
+### Response
+
+```json
+{
+  "qr_codes": ["2@ABC123..."],
+  "timeout_seconds": 60,
+  "status": "waiting_for_qr"
+}
+```
+
+---
+
+## Connect Session
+
+Manually trigger connection (usually not needed as create auto-connects).
+
+```
+POST /api/v1/sessions/{session_id}/connect
+```
+
+### Request Body (optional)
+
+Accepts an optional device identity override. Same shape as `device` in
+[Create Session](#create-session). The override only takes effect on the
+first successful pair — subsequent reconnects reuse the props that
+whatsapp-rust persisted at pair time.
+
+```json
+{
+  "device": {
+    "os": "Windows",
+    "platform": "desktop"
+  }
+}
+```
+
+Empty body is fine — falls back to environment defaults (`WA_DEVICE_OS`,
+`WA_DEVICE_PLATFORM`, `WA_DEVICE_VERSION`).
+
+---
+
+## Pair with Phone Number
+
+Connect using pair code instead of QR.
+
+```
+POST /api/v1/sessions/{session_id}/pair
+```
+
+### Request Body
+
+```json
+{
+  "phone_number": "+628123456789",
+  "show_push_notification": true,
+  "device": {
+    "os": "Windows",
+    "platform": "desktop"
+  }
+}
+```
+
+`device` is optional. See [Device Identity](#device-identity) for the
+field schema and the available platform values.
+
+### Response
+
+```json
+{
+  "code": "ABCD-EFGH",
+  "timeout_seconds": 60
+}
+```
+
+---
+
+## Disconnect Session
+
+Disconnect from WhatsApp without deleting the session.
+
+```
+POST /api/v1/sessions/{session_id}/disconnect
+```
+
+---
+
+## Get Device Info
+
+Get connected device information.
+
+```
+GET /api/v1/sessions/{session_id}/device
+```
+
+### Response
+
+```json
+{
+  "device_id": 1,
+  "phone_number": "628123456789",
+  "lid": "123456789@lid",
+  "push_name": "John Doe"
+}
+```
+
+---
+
+## Device Identity
+
+Controls how each session appears in WhatsApp's **Linked Devices** list at
+pair time (the OS string + platform icon). The default is `Windows` /
+`desktop`, which displays as **WhatsApp Desktop** rather than a browser
+client.
+
+### Where it applies
+
+- `POST /api/v1/sessions` — `device` field in the create body
+- `POST /api/v1/sessions/{id}/connect` — optional body with a `device` field
+- `POST /api/v1/sessions/{id}/pair` — `device` field alongside `phone_number`
+
+### Important caveat
+
+Device props are **only honored on the first pair**. Once a device is
+registered with WhatsApp, the gateway persists the props in its SQLite
+store and reuses them on every reconnect. To change the identity of an
+already-paired session, delete it and pair again.
+
+### Field schema
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `os` | string | `Windows` | Free-form OS label shown in WA |
+| `platform` | string | `desktop` | One of the platform values below |
+| `version` | string | _library default_ | Dotted version like `2.3000.1023902713`. Leave unset unless you have a specific reason — forcing a version has been observed to cause silent server-side drops on freshly-paired sessions. |
+
+### Platform values
+
+| Value | Linked Devices icon |
+|-------|---------------------|
+| `desktop` | WhatsApp Desktop (default) |
+| `uwp` | Windows Store app |
+| `chrome` | Google Chrome |
+| `firefox` | Mozilla Firefox |
+| `edge` | Microsoft Edge |
+| `safari` | Safari |
+| `opera` | Opera |
+| `ie` | Internet Explorer |
+| `ipad` | iPad |
+| `ios_phone` | iPhone |
+| `android_phone` | Android Phone |
+| `android_tablet` | Android Tablet |
+
+Unknown values fall back to `desktop`.
+
+### Environment fallback
+
+When no `device` field is sent, the gateway falls back to these env vars:
+
+```
+WA_DEVICE_OS=Windows
+WA_DEVICE_PLATFORM=desktop
+WA_DEVICE_VERSION=               # omit for library default
+```
+
+---
+
+# Source: /docs/api/messages.md
+
+
+## Fake Reply (Anti-Ban)
+
+Wrap an outgoing text message as a "reply" to a synthesized dummy message so recipients see it in reply-style UI. Useful for blast campaigns to make messages look like conversational replies and reduce spam flagging.
+
+Add the `fake_reply` field to any **Send Text** request body:
+
+```
+POST /api/v1/sessions/{session_id}/messages/text
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "text": "Ini promo bulan ini!",
+  "fake_reply": {
+    "type": "product",
+    "title": "Laptop Gaming ASUS ROG",
+    "body": "Rp 15.000.000"
+  }
+}
+```
+
+### Fake Reply Types
+
+| Type | Description | Auto-populated fields |
+|---|---|---|
+| `text` | Reply to a dummy text question | Random short question from pool |
+| `product` | Reply to a fake marketplace product listing | Product name, price, store |
+| `order` | Reply to a fake order notification | Order ID, item, quantity, total |
+| `location` | Reply to a fake location pin (Indonesian malls/landmarks) | Lat/long with small jitter |
+| `video` | Reply to a fake video message | Video title, caption |
+| `document` | Reply to a fake PDF document | Filename, caption |
+| `contact` | Reply to a fake vCard contact | Name, phone, vCard block |
+
+All fields inside `fake_reply` are optional except `type`:
+
+| Field | Type | Default |
+|---|---|---|
+| `type` | string | **required** — one of the types above |
+| `title` | string | Auto-generated from type-specific pool |
+| `body` | string | Auto-generated from type-specific pool |
+| `participant` | string | Random JID (`62xxxxxxxxxx@s.whatsapp.net`) |
+| `stanza_id` | string | Random 16-byte hex stanza ID |
+
+Indonesian data pools are bundled — product names (Samsung, ASUS, Xiaomi...), locations (Grand Indonesia, Plaza Senayan with real lat/long), mall-appropriate prices (Rp 15jt - 999jt), etc.
+
+### Example — Product reply style
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/text \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "628123456789",
+    "text": "Pesan Anda sudah kami proses ya kak",
+    "fake_reply": {
+      "type": "order",
+      "title": "Invoice #INV-2026-0042",
+      "body": "Total: Rp 1.250.000"
+    }
+  }'
+```
+
+### Example — Location reply (auto-generated)
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/text \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "628123456789",
+    "text": "Ya pak, lokasi kami di sini",
+    "fake_reply": { "type": "location" }
+  }'
+```
+
+The recipient sees the message as a quoted reply to a fake pin (random Jakarta mall with real coordinates), making conversational context look natural.
+
+### Notes
+
+- `fake_reply` takes **precedence** over `reply_to`. If both are set, `fake_reply` wins.
+- The quoted "original" message is never sent to anyone — it's only embedded in the outgoing message's `ContextInfo.QuotedMessage` protobuf field, which WhatsApp clients render as a reply.
+- Currently supported on `messages/text` only. Extension to image/video/document payloads is planned.
+
+---
+
+## Send Image
+
+```
+POST /api/v1/sessions/{session_id}/messages/image
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "image": {
+    "url": "https://example.com/image.jpg"
+  },
+  "caption": "Check this out!"
+}
+```
+
+Or with base64:
+
+```json
+{
+  "to": "628123456789",
+  "image": {
+    "data": "/9j/4AAQSkZJRg...",
+    "mimetype": "image/jpeg"
+  },
+  "caption": "Check this out!"
+}
+```
+
+---
+
+## Send Video
+
+```
+POST /api/v1/sessions/{session_id}/messages/video
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "video": {
+    "url": "https://example.com/video.mp4"
+  },
+  "caption": "Watch this!"
+}
+```
+
+---
+
+## Send Audio
+
+```
+POST /api/v1/sessions/{session_id}/messages/audio
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "audio": {
+    "url": "https://example.com/audio.mp3"
+  },
+  "ptt": true
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `ptt` | Push-to-talk (voice note) if true |
+
+---
+
+## Send Document
+
+```
+POST /api/v1/sessions/{session_id}/messages/document
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "document": {
+    "url": "https://example.com/document.pdf"
+  },
+  "filename": "report.pdf"
+}
+```
+
+---
+
+## Send Sticker
+
+```
+POST /api/v1/sessions/{session_id}/messages/sticker
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "sticker": {
+    "url": "https://example.com/sticker.webp"
+  }
+}
+```
+
+---
+
+## Send Location
+
+```
+POST /api/v1/sessions/{session_id}/messages/location
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "name": "Jakarta",
+  "address": "Jakarta, Indonesia"
+}
+```
+
+---
+
+## Send Contact
+
+```
+POST /api/v1/sessions/{session_id}/messages/contact
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "contact": {
+    "display_name": "John Doe",
+    "phones": [
+      {
+        "number": "+628123456789",
+        "phone_type": "CELL"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Send Poll
+
+Create a poll with multiple options.
+
+```
+POST /api/v1/sessions/{session_id}/messages/poll
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "name": "What's your favorite color?",
+  "options": ["Red", "Blue", "Green", "Yellow"],
+  "selectable_count": 1
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `name` | string | Yes | Poll question |
+| `options` | array | Yes | List of poll options |
+| `selectable_count` | number | No | Max selectable options (0 = unlimited) |
+| `reply_to` | string | No | Message ID to reply to |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/poll \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "628123456789",
+    "name": "What is your favorite color?",
+    "options": ["Red", "Blue", "Green"],
+    "selectable_count": 1
+  }'
+```
+
+---
+
+## Send Buttons
+
+Send a message with interactive buttons.
+
+```
+POST /api/v1/sessions/{session_id}/messages/buttons
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "content_text": "Please choose an option",
+  "footer": "Powered by WA-RS",
+  "buttons": [
+    {
+      "button_id": "btn_1",
+      "display_text": "Option 1"
+    },
+    {
+      "button_id": "btn_2",
+      "display_text": "Option 2"
+    }
+  ],
+  "header_text": "Main Menu"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `content_text` | string | Yes | Body text |
+| `footer` | string | No | Footer text |
+| `buttons` | array | Yes | List of buttons (max 3) |
+| `header_text` | string | No | Header text |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send List
+
+Send a message with a selectable list menu.
+
+```
+POST /api/v1/sessions/{session_id}/messages/list
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "title": "Main Menu",
+  "description": "Please select an option",
+  "button_text": "View Options",
+  "sections": [
+    {
+      "title": "Category 1",
+      "rows": [
+        {
+          "row_id": "row_1",
+          "title": "Item 1",
+          "description": "Description for item 1"
+        },
+        {
+          "row_id": "row_2",
+          "title": "Item 2",
+          "description": "Description for item 2"
+        }
+      ]
+    }
+  ],
+  "footer": "Powered by WA-RS"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `title` | string | Yes | List title |
+| `description` | string | Yes | Body text |
+| `button_text` | string | Yes | Button label to open the list |
+| `sections` | array | Yes | List sections with rows |
+| `footer` | string | No | Footer text |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Interactive
+
+Send a native flow interactive message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/interactive
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "Choose an action",
+  "footer_text": "Powered by WA-RS",
+  "buttons": [
+    {
+      "name": "quick_reply",
+      "button_params_json": "{\"display_text\":\"Click Me\",\"id\":\"btn1\"}"
+    }
+  ],
+  "view_once": true,
+  "fake_reply": {
+    "type": "text",
+    "title": "Quoted header",
+    "body": "Fake quoted body"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | Yes | Body text |
+| `footer_text` | string | No | Footer text |
+| `buttons` | array | Yes | Native flow button items |
+| `reply_to` | string | No | Message ID to reply to |
+| `fake_reply` | object | No | Fabricated quoted-message context. Takes priority over `reply_to`. |
+| `view_once` | boolean | No | Wrap the interactive payload in `viewOnceMessageV2`. **Defaults to `true`** — this is empirically the only reliable way to keep native-flow `quick_reply` buttons clickable on consumer WhatsApp accounts. Set to `false` only when targeting an account that explicitly handles the raw envelope. |
+
+::: warning Consumer WA Web limitation
+`viewOnceMessageV2`-wrapped interactive messages do **not render** in
+WhatsApp Web / Desktop — they show as "This message couldn't load.
+Open the message on your phone to view it." This is a WA Web
+limitation, not a wa-rs bug. Buttons render and click correctly on the
+WhatsApp mobile app.
+:::
+
+---
+
+## Send CTA URL Button
+
+Send a single call-to-action URL button. Tapping the button opens the URL in
+the user's browser. Built on native-flow so it reaches modern WhatsApp
+clients reliably (added in v0.5.0).
+
+```
+POST /api/v1/sessions/{session_id}/messages/cta-url
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "Check out our latest catalog",
+  "footer_text": "Powered by WA-RS",
+  "display_text": "Open website",
+  "url": "https://example.com/catalog",
+  "merchant_url": "https://example.com"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | Yes | Text shown above the button |
+| `footer_text` | string | No | Small text below the body |
+| `display_text` | string | Yes | Label rendered on the button (e.g. "Open website") |
+| `url` | string | Yes | URL the button opens |
+| `merchant_url` | string | No | Merchant URL shown in link preview UI on some clients. Falls back to `url` when omitted. |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Quick Reply Buttons
+
+Send 1–3 quick-reply buttons. Modern native-flow replacement for the legacy
+`ButtonsMessage` — more reliable across iOS and recent Android WhatsApp
+versions (added in v0.5.0).
+
+When the user taps a button, the configured `id` is delivered back via the
+`buttons_response` webhook event so you can route the reply.
+
+```
+POST /api/v1/sessions/{session_id}/messages/quick-reply
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "How can we help?",
+  "footer_text": "Reply anytime",
+  "buttons": [
+    { "id": "support",  "display_text": "Talk to support" },
+    { "id": "billing",  "display_text": "Billing question" },
+    { "id": "feedback", "display_text": "Leave feedback" }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | Yes | Text shown above the buttons |
+| `footer_text` | string | No | Small text below the body |
+| `buttons` | array | Yes | 1–3 quick reply buttons. WA clients clip beyond 3. |
+| `buttons[].id` | string | Yes | Internal ID returned to your webhook on tap |
+| `buttons[].display_text` | string | Yes | Label rendered on the button |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Newsletter Admin Invite
+
+Send a newsletter admin invitation.
+
+```
+POST /api/v1/sessions/{session_id}/messages/newsletter-admin-invite
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "newsletter_jid": "120363000000000000@newsletter",
+  "newsletter_name": "My Newsletter",
+  "caption": "Join as admin!",
+  "invite_expiration": 1700000000
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `newsletter_jid` | string | Yes | Newsletter JID |
+| `newsletter_name` | string | Yes | Newsletter name |
+| `caption` | string | No | Invitation message |
+| `invite_expiration` | number | No | Expiration timestamp |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Newsletter Follower Invite
+
+Send a newsletter follower invitation.
+
+```
+POST /api/v1/sessions/{session_id}/messages/newsletter-follower-invite
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "newsletter_jid": "120363000000000000@newsletter",
+  "newsletter_name": "My Newsletter",
+  "caption": "Follow this newsletter!"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `newsletter_jid` | string | Yes | Newsletter JID |
+| `newsletter_name` | string | Yes | Newsletter name |
+| `caption` | string | No | Invitation message |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Order
+
+Send a business order message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/order
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "order_id": "ORD-001",
+  "item_count": 3,
+  "status": "inquiry",
+  "message": "I'd like to order these items",
+  "order_title": "My Order",
+  "total_amount_1000": 50000000,
+  "total_currency_code": "USD"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `order_id` | string | Yes | Order ID |
+| `item_count` | number | No | Number of items |
+| `status` | string | No | `inquiry`, `accepted`, `declined` |
+| `message` | string | No | Order message text |
+| `order_title` | string | No | Order title |
+| `seller_jid` | string | No | Seller JID |
+| `token` | string | No | Order token |
+| `total_amount_1000` | number | No | Total amount * 1000 |
+| `total_currency_code` | string | No | ISO 4217 currency code |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Invoice
+
+Send a business invoice message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/invoice
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "note": "Invoice for services rendered",
+  "token": "inv-token-123",
+  "attachment_type": "pdf",
+  "attachment_mimetype": "application/pdf"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `note` | string | No | Invoice note |
+| `token` | string | No | Invoice token |
+| `attachment_type` | string | No | `image` or `pdf` |
+| `attachment_mimetype` | string | No | MIME type of attachment |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Payment Invite
+
+Send a payment service invitation.
+
+```
+POST /api/v1/sessions/{session_id}/messages/payment-invite
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "service_type": 0
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `service_type` | number | No | Payment service type (integer) |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Pin Message
+
+Pin or unpin a message in a chat.
+
+```
+POST /api/v1/sessions/{session_id}/messages/pin
+```
+
+### Request Body
+
+```json
+{
+  "chat": "628123456789@s.whatsapp.net",
+  "message_id": "3EB0ABC123...",
+  "duration_seconds": 86400
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `chat` | string | Yes | Chat JID |
+| `message_id` | string | Yes | Message ID to pin |
+| `duration_seconds` | number | No | Pin duration (default: 86400) |
+
+### Pin Durations
+
+| Value | Duration |
+|-------|----------|
+| `0` | Unpin |
+| `86400` | 24 hours |
+| `604800` | 7 days |
+| `2592000` | 30 days |
+
+### Example
+
+```bash
+# Pin for 24 hours
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/pin \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chat": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123...",
+    "duration_seconds": 86400
+  }'
+
+# Unpin
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/pin \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chat": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123...",
+    "duration_seconds": 0
+  }'
+```
+
+---
+
+## Forward Message
+
+Forward a message to another chat.
+
+```
+POST /api/v1/sessions/{session_id}/messages/forward
+```
+
+### Request Body
+
+```json
+{
+  "to": "628987654321@s.whatsapp.net",
+  "text": "Forwarded content here"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `text` | string | Yes | Text content to forward |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Edit Message
+
+```
+POST /api/v1/sessions/{session_id}/messages/edit
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "text": "Edited message text"
+}
+```
+
+---
+
+## Send Reaction
+
+Single endpoint, **CAG-transparent**. The handler auto-swaps between
+the plain `ReactionMessage` wire shape (1:1, regular groups) and the
+encrypted CAG addon stanza (community-announce groups / channels)
+based on the recipient — callers don't pick a path.
+
+```
+POST /api/v1/sessions/{session_id}/messages/react
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "emoji": "👍"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID. Plain phone gets auto-resolved to LID (see [LID auto-resolve](#lid-auto-resolve)). |
+| `message_id` | string | Yes | ID of the message being reacted to |
+| `emoji` | string | Yes | Single emoji. Send `""` to remove the existing reaction. |
+
+To remove reaction, send empty emoji:
+
+```json
+{
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "emoji": ""
+}
+```
+
+::: tip Inbound CAG reactions
+Incoming encrypted reactions on CAG channels are decrypted by the
+upstream lib and surfaced as a regular `reaction` event — no
+special-casing needed on the receiver side.
+:::
+
+---
+
+## Revoke Message
+
+Delete a message for everyone in the chat.
+
+```
+POST /api/v1/sessions/{session_id}/messages/revoke
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "message_id": "3EB0ABC123..."
+}
+```
+
+To revoke another user's message as a group admin:
+
+```json
+{
+  "to": "123456789-1234567890@g.us",
+  "message_id": "3EB0ABC123...",
+  "original_sender": "628987654321@s.whatsapp.net"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/revoke \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123..."
+  }'
+```
+
+---
+
+## Mark as Read
+
+Send read receipts for messages.
+
+```
+POST /api/v1/sessions/{session_id}/messages/read
+```
+
+### Request Body
+
+```json
+{
+  "chat_jid": "628123456789@s.whatsapp.net",
+  "message_ids": ["3EB0ABC123...", "3EB0DEF456..."]
+}
+```
+
+For group messages, include the sender:
+
+```json
+{
+  "chat_jid": "123456789-1234567890@g.us",
+  "sender": "628987654321@s.whatsapp.net",
+  "message_ids": ["3EB0ABC123..."]
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/read \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chat_jid": "628123456789@s.whatsapp.net",
+    "message_ids": ["3EB0ABC123..."]
+  }'
+```
+
+---
+
+## Send Poll Update (Vote)
+
+Submit a vote on an existing poll.
+
+```
+POST /api/v1/sessions/{session_id}/messages/poll-update
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "poll_message_id": "3EB0ABC123...",
+  "selected_options": ["sha256-hash-of-option"],
+  "enc_iv": "base64-encoded-iv",
+  "enc_payload": "base64-encoded-payload"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Chat JID where the poll was created |
+| `poll_message_id` | string | Yes | Message ID of the poll |
+| `selected_options` | array | Yes | SHA-256 hashes of selected option texts |
+| `enc_iv` | string | No | Encryption IV (base64) |
+| `enc_payload` | string | No | Encryption payload (base64) |
+
+---
+
+## Send Buttons Response
+
+Send a response to a buttons message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/buttons-response
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "selected_button_id": "btn_1",
+  "selected_display_text": "Option 1"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `selected_button_id` | string | Yes | ID of the selected button |
+| `selected_display_text` | string | Yes | Display text of the selected button |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send List Response
+
+Send a response to a list message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/list-response
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "title": "Category 1",
+  "selected_row_id": "row_1",
+  "description": "Description for the selection"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `title` | string | Yes | Title of the selection |
+| `selected_row_id` | string | Yes | ID of the selected row |
+| `description` | string | No | Description of the selection |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Interactive Response
+
+Send a response to a native flow interactive message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/interactive-response
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "body_text": "Response body",
+  "name": "quick_reply",
+  "params_json": "{\"id\":\"btn1\"}",
+  "version": 3
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `body_text` | string | No | Response body text |
+| `name` | string | Yes | Native flow response name |
+| `params_json` | string | Yes | Response parameters (JSON string) |
+| `version` | number | No | Native flow version (default: 3) |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Highly Structured Message (HSM)
+
+Send a highly structured message (template).
+
+```
+POST /api/v1/sessions/{session_id}/messages/highly-structured
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "namespace": "your_namespace",
+  "element_name": "template_name",
+  "params": ["param1", "param2"],
+  "fallback_lg": "en",
+  "fallback_lc": "US"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `namespace` | string | Yes | Template namespace |
+| `element_name` | string | Yes | Template element name |
+| `params` | array | No | Template parameters |
+| `fallback_lg` | string | No | Fallback language |
+| `fallback_lc` | string | No | Fallback locale |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Template Button Reply
+
+Send a reply to a template button message.
+
+```
+POST /api/v1/sessions/{session_id}/messages/template-button-reply
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "selected_id": "btn_1",
+  "selected_display_text": "Option 1",
+  "selected_index": 0
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `selected_id` | string | Yes | ID of the selected template button |
+| `selected_display_text` | string | Yes | Display text of the selected button |
+| `selected_index` | number | No | Index of the selected button |
+| `reply_to` | string | No | Message ID to reply to |
+
+---
+
+## Send Comment
+
+Send an encrypted comment on a Community Announcement Group (CAG)
+channel post. Wraps the comment body in a top-level `enc_comment_message`
+envelope encrypted with the parent post's `messageSecret`, mirroring
+WA Web's `WAWebSendCommentMessageAction`.
+
+```
+POST /api/v1/sessions/{session_id}/messages/comment
+```
+
+### Request Body
+
+```json
+{
+  "to": "120363000000000000@g.us",
+  "text": "This is my comment",
+  "target_message_id": "3EB0ABC123...",
+  "target_chat_jid": "120363000000000000@g.us",
+  "target_participant": "628xxxxxxxxxx@lid"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Channel / community-announce group JID where the parent post lives |
+| `text` | string | Yes | Comment text |
+| `target_message_id` | string | Yes | Message ID of the parent post |
+| `target_chat_jid` | string | No | Override for the chat JID embedded in the target key. Defaults to `to`. |
+| `target_participant` | string | No | Author JID of the parent post. Required when the lib has no stored `messageSecret` for the parent (e.g. you never received the post locally). |
+
+::: tip Inbound comments
+Incoming encrypted comments are decrypted by the upstream lib and
+dispatched as a regular `message` event with the inner body. The parent
+post key surfaces under `comment_target` in `MessageInfo`.
+:::
+
+---
+
+## Send Scheduled Call
+
+Schedule a voice or video call in a group.
+
+```
+POST /api/v1/sessions/{session_id}/messages/scheduled-call
+```
+
+### Request Body
+
+```json
+{
+  "to": "120363000000000000@g.us",
+  "scheduled_timestamp_ms": 1700000000000,
+  "call_type": "voice",
+  "title": "Weekly Team Sync"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Group JID |
+| `scheduled_timestamp_ms` | number | Yes | Scheduled time (Unix ms) |
+| `call_type` | string | No | `voice` or `video` (default: `voice`) |
+| `title` | string | No | Call title |
+
+---
+
+## Edit Scheduled Call
+
+Cancel or edit a scheduled call.
+
+```
+POST /api/v1/sessions/{session_id}/messages/scheduled-call-edit
+```
+
+### Request Body
+
+```json
+{
+  "to": "120363000000000000@g.us",
+  "scheduled_call_message_id": "3EB0ABC123...",
+  "edit_type": "cancel"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Group JID |
+| `scheduled_call_message_id` | string | Yes | Message ID of the scheduled call |
+| `edit_type` | string | No | `cancel` (default: `cancel`) |
+
+---
+
+## Send Payment
+
+Send a payment to a contact.
+
+```
+POST /api/v1/sessions/{session_id}/messages/send-payment
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "note": "Payment for services",
+  "request_message_id": "3EB0ABC123...",
+  "transaction_data": "{\"key\":\"value\"}"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `note` | string | No | Payment note |
+| `request_message_id` | string | No | Original payment request message ID |
+| `transaction_data` | string | No | Transaction data (JSON string) |
+
+---
+
+## Request Payment
+
+Send a payment request to a contact.
+
+```
+POST /api/v1/sessions/{session_id}/messages/request-payment
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "currency_code": "USD",
+  "amount1000": 50000000,
+  "note": "Payment for invoice #123",
+  "expiry_timestamp": 1700086400
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `currency_code` | string | Yes | ISO 4217 currency code |
+| `amount1000` | number | Yes | Amount in smallest unit * 1000 |
+| `note` | string | No | Payment request note |
+| `expiry_timestamp` | number | No | Request expiration timestamp |
+
+---
+
+## Cancel Payment Request
+
+Cancel a previously sent payment request.
+
+```
+POST /api/v1/sessions/{session_id}/messages/cancel-payment
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "request_message_id": "3EB0ABC123..."
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `request_message_id` | string | Yes | Message ID of the payment request |
+
+---
+
+## Decline Payment Request
+
+Decline a received payment request.
+
+```
+POST /api/v1/sessions/{session_id}/messages/decline-payment
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "request_message_id": "3EB0ABC123..."
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `request_message_id` | string | Yes | Message ID of the payment request |
+
+---
+
+## Send Newsletter Forward
+
+Forward a newsletter message to a contact or group.
+
+```
+POST /api/v1/sessions/{session_id}/messages/newsletter-forward
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "text": "Check out this newsletter post",
+  "newsletter_jid": "120363000000000000@newsletter",
+  "server_message_id": 42,
+  "newsletter_name": "My Newsletter",
+  "content_type": "update"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `text` | string | Yes | Text content |
+| `newsletter_jid` | string | Yes | Newsletter JID |
+| `server_message_id` | number | Yes | Server message ID from newsletter |
+| `newsletter_name` | string | No | Newsletter name |
+| `content_type` | string | No | `update`, `update_card`, `link_card` |
+
+---
+
+## Media Data Format
+
+All media endpoints accept either URL or base64:
+
+### URL Format
+
+```json
+{
+  "url": "https://example.com/file.jpg"
+}
+```
+
+### Base64 Format
+
+```json
+{
+  "data": "base64-encoded-data...",
+  "mimetype": "image/jpeg"
+}
+```
+
+### Uploaded Format
+
+If you've already uploaded via the `/media/upload` endpoint:
+
+```json
+{
+  "url": "https://mmg.whatsapp.net/...",
+  "direct_path": "/v/t62.7...",
+  "media_key": "base64-key",
+  "file_sha256": "base64-sha256",
+  "file_enc_sha256": "base64-enc-sha256",
+  "file_length": 12345,
+  "mimetype": "image/jpeg"
+}
+```
+
+### Supported MIME Types
+
+| Type | MIME Types |
+|------|------------|
+| Image | `image/jpeg`, `image/png`, `image/webp` |
+| Video | `video/mp4`, `video/3gpp` |
+| Audio | `audio/mpeg`, `audio/ogg`, `audio/wav` |
+| Document | Any |
+| Sticker | `image/webp` |
+
+---
+
+# Source: /docs/api/groups.md
+
+
+## Get Group
+
+Get basic group information.
+
+```
+GET /api/v1/sessions/{session_id}/groups/{group_jid}
+```
+
+### Response
+
+```json
+{
+  "jid": "123456789-1234567890@g.us",
+  "name": "My Group",
+  "topic": "Group description",
+  "participant_count": 25,
+  "created_at": 1640000000
+}
+```
+
+---
+
+## Get Group Info
+
+Get detailed group information including participants.
+
+```
+GET /api/v1/sessions/{session_id}/groups/{group_jid}/info
+```
+
+### Response
+
+```json
+{
+  "jid": "123456789-1234567890@g.us",
+  "name": "My Group",
+  "topic": "Group description",
+  "owner": "628123456789@s.whatsapp.net",
+  "created_at": 1640000000,
+  "participants": [
+    {
+      "jid": "628123456789@s.whatsapp.net",
+      "role": "admin"
+    },
+    {
+      "jid": "628987654321@s.whatsapp.net",
+      "role": "member"
+    }
+  ]
+}
+```
+
+### Participant Roles
+
+| Role | Description |
+|------|-------------|
+| `superadmin` | Group creator |
+| `admin` | Group admin |
+| `member` | Regular member |
+
+---
+
+## Create Group
+
+Create a new WhatsApp group.
+
+```
+POST /api/v1/sessions/{session_id}/groups
+```
+
+### Request Body
+
+```json
+{
+  "name": "My New Group",
+  "participants": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ],
+  "membership_approval_mode": "off",
+  "member_add_mode": "all_member_add",
+  "member_link_mode": "admin_link"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Group name |
+| `participants` | array | Yes | List of participant JIDs |
+| `membership_approval_mode` | string | No | `off` or `on` (join request approval) |
+| `member_add_mode` | string | No | `admin_add` or `all_member_add` |
+| `member_link_mode` | string | No | `admin_link` or `all_member_link` |
+
+### Response
+
+```json
+{
+  "group_jid": "123456789-1234567890@g.us"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/groups \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My New Group",
+    "participants": ["628123456789@s.whatsapp.net"]
+  }'
+```
+
+---
+
+## Set Group Subject
+
+Update the group name/subject.
+
+```
+PUT /api/v1/sessions/{session_id}/groups/{group_jid}/subject
+```
+
+### Request Body
+
+```json
+{
+  "subject": "New Group Name"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## Set Group Description
+
+Update or delete the group description.
+
+```
+PUT /api/v1/sessions/{session_id}/groups/{group_jid}/description
+```
+
+### Request Body
+
+```json
+{
+  "description": "This is the group description",
+  "prev_id": null
+}
+```
+
+To delete the description, set `description` to `null`.
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## Set Group Settings
+
+Update advanced group settings.
+
+```
+PUT /api/v1/sessions/{session_id}/groups/{group_jid}/settings
+```
+
+### Request Body
+
+```json
+{
+  "membership_approval_mode": "on",
+  "member_add_mode": "admin_add",
+  "member_link_mode": "admin_link"
+}
+```
+
+All fields are optional. Only provided fields will be updated.
+
+| Field | Type | Values | Description |
+|-------|------|--------|-------------|
+| `membership_approval_mode` | string | `off`, `on` | Whether join requests require admin approval |
+| `member_add_mode` | string | `admin_add`, `all_member_add` | Who can add new participants |
+| `member_link_mode` | string | `admin_link`, `all_member_link` | Who can edit the group invite link |
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+### Example
+
+```bash
+curl -X PUT http://localhost:3451/api/v1/sessions/my-session/groups/123456789-1234567890@g.us/settings \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "membership_approval_mode": "on",
+    "member_add_mode": "admin_add"
+  }'
+```
+
+---
+
+## Leave Group
+
+Leave a group.
+
+```
+POST /api/v1/sessions/{session_id}/groups/{group_jid}/leave
+```
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/groups/123456789-1234567890@g.us/leave \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Add Participants
+
+Add members to a group.
+
+```
+POST /api/v1/sessions/{session_id}/groups/{group_jid}/participants
+```
+
+### Request Body
+
+```json
+{
+  "participants": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "results": [
+    {
+      "jid": "628123456789@s.whatsapp.net",
+      "status": "Added"
+    }
+  ]
+}
+```
+
+---
+
+## Remove Participants
+
+Remove members from a group.
+
+```
+DELETE /api/v1/sessions/{session_id}/groups/{group_jid}/participants
+```
+
+### Request Body
+
+```json
+{
+  "participants": [
+    "628123456789@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "results": [
+    {
+      "jid": "628123456789@s.whatsapp.net",
+      "status": "Removed"
+    }
+  ]
+}
+```
+
+---
+
+## Promote Participants
+
+Make members group admins.
+
+```
+POST /api/v1/sessions/{session_id}/groups/{group_jid}/admins
+```
+
+### Request Body
+
+```json
+{
+  "participants": [
+    "628123456789@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## Demote Participants
+
+Remove admin status from members.
+
+```
+DELETE /api/v1/sessions/{session_id}/groups/{group_jid}/admins
+```
+
+### Request Body
+
+```json
+{
+  "participants": [
+    "628123456789@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## Get Invite Link
+
+Get or reset the group invite link.
+
+```
+GET /api/v1/sessions/{session_id}/groups/{group_jid}/invite-link
+```
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `reset` | boolean | Set to `true` to generate a new invite link |
+
+### Response
+
+```json
+{
+  "invite_link": "https://chat.whatsapp.com/AbCdEfGhIjK"
+}
+```
+
+### Example
+
+```bash
+# Get current invite link
+curl http://localhost:3451/api/v1/sessions/my-session/groups/123456789-1234567890@g.us/invite-link \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Reset and get new invite link
+curl "http://localhost:3451/api/v1/sessions/my-session/groups/123456789-1234567890@g.us/invite-link?reset=true" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Sending Messages to Groups
+
+Use the same message endpoints with group JID:
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/text \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "123456789-1234567890@g.us",
+    "text": "Hello group!"
+  }'
+```
+
+---
+
+# Source: /docs/api/contacts.md
+
+
+## Check on WhatsApp
+
+Check if phone numbers are registered on WhatsApp.
+
+```
+POST /api/v1/sessions/{session_id}/contacts/check
+```
+
+### Request Body
+
+```json
+{
+  "phones": ["628123456789", "628987654321"]
+}
+```
+
+### Response
+
+```json
+{
+  "results": [
+    {
+      "phone": "628123456789",
+      "exists": true,
+      "jid": "628123456789@s.whatsapp.net"
+    },
+    {
+      "phone": "628987654321",
+      "exists": false,
+      "jid": null
+    }
+  ]
+}
+```
+
+---
+
+## Get Contact Info
+
+Get contact information.
+
+```
+POST /api/v1/sessions/{session_id}/contacts/info
+```
+
+### Request Body
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net"
+}
+```
+
+### Response
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net",
+  "name": "John Doe",
+  "notify": "Johnny",
+  "verified_name": null
+}
+```
+
+---
+
+## Get Profile Picture
+
+Get contact's profile picture URL.
+
+```
+GET /api/v1/sessions/{session_id}/contacts/{jid}/picture
+```
+
+### Response
+
+```json
+{
+  "url": "https://pps.whatsapp.net/...",
+  "id": "123456789"
+}
+```
+
+---
+
+## Get User Info
+
+Get detailed user information for multiple contacts.
+
+```
+POST /api/v1/sessions/{session_id}/contacts/users
+```
+
+### Request Body
+
+```json
+{
+  "jids": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "users": [
+    {
+      "jid": "628123456789@s.whatsapp.net",
+      "verified_name": "Business Name",
+      "picture_id": "123456789"
+    }
+  ]
+}
+```
+
+---
+
+## JID Format
+
+WhatsApp uses JID (Jabber ID) format for identifiers:
+
+| Type | Format | Example |
+|------|--------|---------|
+| User | `{phone}@s.whatsapp.net` | `628123456789@s.whatsapp.net` |
+| Group | `{id}@g.us` | `123456789-1234567890@g.us` |
+| Broadcast | `{id}@broadcast` | `status@broadcast` |
+
+---
+
+# Source: /docs/api/presence.md
+
+
+## Subscribe to Presence
+
+Subscribe to a contact's presence updates to receive online/offline notifications.
+
+```
+POST /api/v1/sessions/{session_id}/presence/subscribe
+```
+
+### Request Body
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Subscribed to presence updates for 628123456789@s.whatsapp.net"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/presence/subscribe \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jid": "628123456789@s.whatsapp.net"
+  }'
+```
+
+:::note
+Presence updates will be delivered via webhooks when the contact comes online or goes offline.
+:::
+
+---
+
+## Send Chat State
+
+Send typing or recording indicator.
+
+```
+POST /api/v1/sessions/{session_id}/chatstate/send
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "state": "composing"
+}
+```
+
+### State Values
+
+| State | Description |
+|-------|-------------|
+| `composing` | Typing... |
+| `recording` | Recording audio... |
+| `paused` | Stop indicator |
+
+---
+
+## Send Typing Indicator
+
+Shorthand for sending typing indicator.
+
+```
+POST /api/v1/sessions/{session_id}/chatstate/typing
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789@s.whatsapp.net",
+  "duration": 3000
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `to` | Recipient JID |
+| `duration` | Duration in milliseconds |
+
+---
+
+# Blocking
+
+Manage blocked contacts.
+
+## Get Block List
+
+Get all blocked contacts.
+
+```
+GET /api/v1/sessions/{session_id}/blocking/list
+```
+
+### Response
+
+```json
+{
+  "blocked": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ],
+  "count": 2
+}
+```
+
+---
+
+## Block Contact
+
+Block a contact.
+
+```
+POST /api/v1/sessions/{session_id}/blocking/block
+```
+
+### Request Body
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net"
+}
+```
+
+---
+
+## Unblock Contact
+
+Unblock a contact.
+
+```
+POST /api/v1/sessions/{session_id}/blocking/unblock
+```
+
+### Request Body
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net"
+}
+```
+
+---
+
+## Check Block Status
+
+Check if a contact is blocked.
+
+```
+GET /api/v1/sessions/{session_id}/blocking/check/{jid}
+```
+
+### Response
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net",
+  "blocked": true
+}
+```
+
+---
+
+# Source: /docs/api/media.md
+
+
+## Download Media
+
+Download and decrypt media from WhatsApp using the media parameters received in a message.
+
+```
+POST /api/v1/sessions/{session_id}/media/download
+```
+
+### Request Body
+
+```json
+{
+  "direct_path": "/v/t62.7...",
+  "media_key": "base64-encoded-key",
+  "file_sha256": "base64-encoded-sha256",
+  "file_enc_sha256": "base64-encoded-enc-sha256",
+  "file_length": 12345,
+  "media_type": "image"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `direct_path` | string | Yes | Media path from message |
+| `media_key` | string | Yes | Base64-encoded encryption key |
+| `file_sha256` | string | Yes | Base64-encoded file hash |
+| `file_enc_sha256` | string | Yes | Base64-encoded encrypted file hash |
+| `file_length` | number | Yes | Original file size in bytes |
+| `media_type` | string | Yes | Type: `image`, `video`, `audio`, `document`, `sticker` |
+
+### Response
+
+```json
+{
+  "data": "base64-encoded-file-data",
+  "size": 12345
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/media/download \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "direct_path": "/v/t62.7118-24/...",
+    "media_key": "ABC123...",
+    "file_sha256": "DEF456...",
+    "file_enc_sha256": "GHI789...",
+    "file_length": 12345,
+    "media_type": "image"
+  }'
+```
+
+### Usage with Received Messages
+
+When you receive a media message via webhook, extract the media parameters and use them to download:
+
+```javascript
+// Example: Handle incoming image message
+const mediaMessage = webhookPayload.message.imageMessage;
+
+const downloadParams = {
+  direct_path: mediaMessage.directPath,
+  media_key: mediaMessage.mediaKey,      // Already base64
+  file_sha256: mediaMessage.fileSha256,  // Already base64
+  file_enc_sha256: mediaMessage.fileEncSha256,
+  file_length: mediaMessage.fileLength,
+  media_type: "image"
+};
+
+// Download the media
+const response = await fetch(`/api/v1/sessions/${sessionId}/media/download`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(downloadParams)
+});
+
+const { data, size } = await response.json();
+// data is base64-encoded file content
+const fileBuffer = Buffer.from(data, 'base64');
+```
+
+---
+
+## Media Types
+
+| Type | Description | Common Formats |
+|------|-------------|----------------|
+| `image` | Photos and images | JPEG, PNG, WebP |
+| `video` | Video files | MP4, 3GPP |
+| `audio` | Audio files and voice notes | MP3, OGG, WAV |
+| `document` | Documents and other files | PDF, DOCX, any |
+| `sticker` | Animated or static stickers | WebP |
+
+---
+
+# Source: /docs/api/calls.md
+
+
+---
+
+# Source: /docs/api/webhooks.md
+
+
+## List Webhooks
+
+Get all webhooks for a session.
+
+```
+GET /api/v1/sessions/{session_id}/webhooks
+```
+
+### Response
+
+```json
+{
+  "webhooks": [
+    {
+      "url": "https://example.com/webhook",
+      "events": ["all"],
+      "secret": null,
+      "enabled": true
+    }
+  ],
+  "count": 1
+}
+```
+
+---
+
+## Delete Webhook
+
+Remove a webhook.
+
+```
+DELETE /api/v1/sessions/{session_id}/webhooks/{webhook_id}
+```
+
+---
+
+## Re-enable Webhook
+
+Webhooks are auto-disabled after 100 consecutive delivery failures (see
+[Auto-disable](#circuit-breaker--auto-disable) below). Use this endpoint to flip a
+disabled webhook back to `enabled=true` and clear the disable metadata
+once the target endpoint is fixed.
+
+```
+POST /api/v1/sessions/{session_id}/webhooks/{webhook_id}/enable
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Webhook re-enabled"
+}
+```
+
+---
+
+## Circuit Breaker & Auto-disable
+
+The dispatcher tracks per-URL delivery failures and reacts in two
+stages so a single dead endpoint can't flood the log or block the
+runtime.
+
+- **OPEN (5 min cooldown)** — after 25 consecutive failures the URL
+  enters an OPEN circuit. Dispatch is skipped for 5 minutes; log lines
+  drop to a single `circuit OPEN` warning instead of one per attempt.
+- **Auto-disable (permanent)** — after 100 consecutive failures the
+  webhook row is switched to `enabled=false`, `disabled_at` gets the
+  current timestamp, and `disabled_reason` records the last error
+  string. In-memory registrations pointing at that URL are purged from
+  every session at the same time. The dispatcher will never try the
+  URL again until it is re-enabled via `POST /webhooks/{id}/enable`.
+
+### Schema columns
+
+The `webhooks` table carries two additional columns:
+
+- `disabled_at` (`TIMESTAMPTZ` / `VARCHAR(30)` / `TEXT` depending on
+  backend) — when the auto-disable fired, `NULL` otherwise
+- `disabled_reason` (`TEXT`) — the last error surfaced before the
+  auto-disable, for later triage
+
+Both are cleared by `POST /webhooks/{id}/enable`.
+
+---
+
+## Event Types
+
+### Core Events
+
+| Event | Description |
+|-------|-------------|
+| `all` | Subscribe to all events |
+| `message` | New message received |
+| `receipt` | Message receipt (delivered, read) |
+| `presence` | Contact online/offline status |
+| `chat_presence` | Typing indicator |
+| `connected` | Connected to WhatsApp |
+| `disconnected` | Disconnected from WhatsApp |
+| `logged_out` | Logged out from WhatsApp |
+| `qr_code` | QR code generated |
+| `pair_code` | Pair code generated |
+
+### Group Events
+
+| Event | Description |
+|-------|-------------|
+| `group_update` | Group info changed |
+| `joined_group` | Joined a new group |
+
+### Contact & Profile Events
+
+| Event | Description |
+|-------|-------------|
+| `picture_update` | Profile picture changed |
+| `user_about_update` | User about/status text changed |
+| `push_name_update` | Display name changed |
+| `contact_update` | Contact information updated |
+| `device_list_update` | Linked devices changed |
+
+### Chat Events
+
+| Event | Description |
+|-------|-------------|
+| `pin_update` | Message pinned or unpinned |
+| `mute_update` | Chat muted or unmuted |
+| `archive_update` | Chat archived or unarchived |
+| `mark_chat_as_read` | Chat marked as read |
+
+### System Events
+
+| Event | Description |
+|-------|-------------|
+| `undecryptable_message` | Received a message that could not be decrypted |
+| `client_outdated` | Client version is outdated |
+| `offline_sync_preview` | Preview of offline messages available |
+| `offline_sync_completed` | Offline message sync completed |
+
+---
+
+## Webhook Payload
+
+All webhook payloads follow this format:
+
+```json
+{
+  "session_id": "my-session",
+  "event": "message",
+  "timestamp": 1767143203,
+  "data": {
+    // Event-specific data
+  }
+}
+```
+
+### Message Event
+
+```json
+{
+  "session_id": "my-session",
+  "event": "message",
+  "timestamp": 1767143203,
+  "data": {
+    "from": "628123456789@s.whatsapp.net",
+    "chat": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123...",
+    "is_from_me": false,
+    "push_name": "Sender",
+    "message_type": "text",
+    "text": "hello",
+    "caption": null,
+    "media_mimetype": null,
+    "media": null,
+    "location": null,
+    "is_group": false,
+    "participant": "628123456789@s.whatsapp.net"
+  }
+}
+```
+
+### Location Message (v0.6.2+)
+
+When `message_type` is `location` or a live location is received, the
+`location` field carries the GPS payload.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "message",
+  "data": {
+    "from": "628123456789@s.whatsapp.net",
+    "message_id": "AC...",
+    "message_type": "location",
+    "text": null,
+    "location": {
+      "latitude": -6.98,
+      "longitude": 109.13,
+      "name": "Hotel X",
+      "address": "Jl. Sudirman No. 1",
+      "url": "https://maps.google.com/?q=-6.98,109.13",
+      "accuracy_meters": 12,
+      "speed_mps": 0,
+      "is_live": false
+    }
+  }
+}
+```
+
+Live locations carry the same `latitude`/`longitude` plus
+`sequence_number`, optional `caption`, and `is_live: true`. The body
+streams as a series of `message` events with the same `message_id`.
+
+### Connected Event
+
+```json
+{
+  "session_id": "my-session",
+  "event": "connected",
+  "timestamp": 1767143203,
+  "data": {}
+}
+```
+
+### Picture Update Event
+
+```json
+{
+  "session_id": "my-session",
+  "event": "picture_update",
+  "timestamp": 1767143203,
+  "data": {
+    "jid": "628123456789@s.whatsapp.net",
+    "action": "set"
+  }
+}
+```
+
+### Pin Update Event
+
+```json
+{
+  "session_id": "my-session",
+  "event": "pin_update",
+  "timestamp": 1767143203,
+  "data": {
+    "chat_jid": "628123456789@s.whatsapp.net",
+    "pinned": true
+  }
+}
+```
+
+---
+
+## Signature Verification
+
+If you provide a `secret`, WA-RS will sign the payload with HMAC-SHA256.
+
+The signature is sent in the `X-Webhook-Signature` header:
+
+```
+X-Webhook-Signature: sha256=abc123...
+```
+
+### Verification Example (Node.js)
+
+```javascript
+const crypto = require('crypto');
+
+function verifySignature(payload, signature, secret) {
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// Express middleware
+app.post('/webhook', (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = JSON.stringify(req.body);
+
+  if (!verifySignature(payload, signature, 'your-secret')) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  // Process webhook
+  console.log(req.body);
+  res.sendStatus(200);
+});
+```
+
+### Verification Example (Python)
+
+```python
+import hmac
+import hashlib
+
+def verify_signature(payload, signature, secret):
+    expected = 'sha256=' + hmac.new(
+        secret.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(signature, expected)
+```
+
+---
+
+## Best Practices
+
+1. **Always verify signatures** in production
+2. **Respond quickly** (within 5 seconds) to avoid timeouts
+3. **Use HTTPS** for webhook endpoints
+4. **Handle duplicates** - webhooks may be retried
+5. **Log everything** for debugging
+
+---
+
+# Source: /docs/api/health.md
+
+
+---
+
+# Source: /docs/api/privacy.md
+
+
+---
+
+# Source: /docs/api/mex.md
+
+
+## MEX Mutate
+
+Execute a GraphQL mutation against WhatsApp's internal API.
+
+```
+POST /api/v1/sessions/{session_id}/mex/mutate
+```
+
+### Request Body
+
+```json
+{
+  "doc_id": "9876543210",
+  "variables": {
+    "input": {
+      "key": "value"
+    }
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `doc_id` | string | Yes | GraphQL document ID |
+| `variables` | object | Yes | Mutation variables as JSON |
+
+### Response
+
+```json
+{
+  "data": {
+    "result": "..."
+  },
+  "errors": null
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/mex/mutate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "9876543210",
+    "variables": {"input": {"key": "value"}}
+  }'
+```
+
+---
+
+# Source: /docs/api/operations.md
+
+
+## TCToken - Issue Tokens
+
+Issue trust contact tokens for one or more JIDs.
+
+```
+POST /api/v1/sessions/{session_id}/tctoken/issue
+```
+
+### Request Body
+
+```json
+{
+  "jids": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "tokens": [
+    {
+      "jid": "628123456789@s.whatsapp.net",
+      "timestamp": 1700000000
+    }
+  ]
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/tctoken/issue \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jids": ["628123456789@s.whatsapp.net"]
+  }'
+```
+
+---
+
+## TCToken - Get Token
+
+Get the trust contact token for a specific JID.
+
+```
+GET /api/v1/sessions/{session_id}/tctoken/{jid}
+```
+
+### Response
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net",
+  "token_timestamp": 1700000000,
+  "sender_timestamp": 1700000100,
+  "found": true
+}
+```
+
+If no token exists:
+
+```json
+{
+  "jid": "628123456789@s.whatsapp.net",
+  "token_timestamp": null,
+  "sender_timestamp": null,
+  "found": false
+}
+```
+
+### Example
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/tctoken/628123456789@s.whatsapp.net \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## TCToken - List All
+
+List all JIDs that have trust contact tokens.
+
+```
+GET /api/v1/sessions/{session_id}/tctoken/list
+```
+
+### Response
+
+```json
+{
+  "jids": [
+    "628123456789@s.whatsapp.net",
+    "628987654321@s.whatsapp.net"
+  ]
+}
+```
+
+### Example
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/tctoken/list \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## TCToken - Prune Expired
+
+Remove all expired trust contact tokens.
+
+```
+DELETE /api/v1/sessions/{session_id}/tctoken/expired
+```
+
+### Response
+
+```json
+{
+  "pruned_count": 5
+}
+```
+
+### Example
+
+```bash
+curl -X DELETE http://localhost:3451/api/v1/sessions/my-session/tctoken/expired \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Auto-Reconnect - Get Status
+
+Get the current auto-reconnect configuration.
+
+```
+GET /api/v1/sessions/{session_id}/reconnect
+```
+
+### Response
+
+```json
+{
+  "enabled": true,
+  "error_count": 0
+}
+```
+
+### Example
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/reconnect \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Auto-Reconnect - Set
+
+Enable or disable automatic reconnection on disconnect.
+
+```
+PUT /api/v1/sessions/{session_id}/reconnect
+```
+
+### Request Body
+
+```json
+{
+  "enabled": true
+}
+```
+
+### Response
+
+```json
+{
+  "enabled": true,
+  "error_count": 0
+}
+```
+
+### Example
+
+```bash
+curl -X PUT http://localhost:3451/api/v1/sessions/my-session/reconnect \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+```
+
+---
+
+## History Sync - Get
+
+Get the current history sync configuration.
+
+```
+GET /api/v1/sessions/{session_id}/history-sync
+```
+
+### Response
+
+```json
+{
+  "skip_history_sync": false
+}
+```
+
+### Example
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/history-sync \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## History Sync - Set
+
+Control whether message history is synced when connecting a new device.
+
+```
+PUT /api/v1/sessions/{session_id}/history-sync
+```
+
+### Request Body
+
+```json
+{
+  "skip": true
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `skip` | boolean | Yes | Set to `true` to skip history sync |
+
+### Response
+
+```json
+{
+  "skip_history_sync": true
+}
+```
+
+### Example
+
+```bash
+curl -X PUT http://localhost:3451/api/v1/sessions/my-session/history-sync \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"skip": true}'
+```
+
+---
+
+# Source: /docs/api/nats.md
+
+
+## Subject Hierarchy
+
+```
+wa.events.{session_id}.{event_type}   ← incoming WhatsApp events
+wa.send.{session_id}                  ← outbound message commands
+```
+
+### Examples
+
+| Subject | Description |
+|---------|-------------|
+| `wa.events.my-session.message` | New message on session "my-session" |
+| `wa.events.my-session.connected` | Session connected |
+| `wa.events.my-session.send_result` | Result of an outbound command |
+| `wa.events.*.connected` | All sessions' connected events |
+| `wa.events.>` | Subscribe to **all** events |
+| `wa.send.my-session` | Send a message via "my-session" |
+
+---
+
+## JetStream Streams
+
+| Stream | Subjects | Retention | Max Age | Max Size | Purpose |
+|--------|----------|-----------|---------|----------|---------|
+| `WA_EVENTS` | `wa.events.>` | Limits | 7 days | 1 GB | Incoming events |
+| `WA_SEND` | `wa.send.>` | WorkQueue | 1 day | 512 MB | Outbound commands |
+
+The `WA_SEND` stream uses **WorkQueue** retention — messages are removed after acknowledgment.
+
+---
+
+## Incoming Events
+
+All WhatsApp events that are sent to webhooks are also published to NATS. The payload format is identical to webhook payloads:
+
+```json
+{
+  "session_id": "my-session",
+  "event": "message",
+  "timestamp": 1700000000,
+  "data": {
+    "from": "628123456789@s.whatsapp.net",
+    "chat": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123..."
+  }
+}
+```
+
+### Subscribing (NATS CLI)
+
+```bash
+# Subscribe to all events
+nats sub "wa.events.>"
+
+# Subscribe to messages only
+nats sub "wa.events.*.message"
+
+# Subscribe to a specific session
+nats sub "wa.events.my-session.>"
+```
+
+### Subscribing (Node.js)
+
+```javascript
+import { connect, JSONCodec } from 'nats';
+
+const nc = await connect({ servers: 'nats://localhost:4222' });
+const js = nc.jetstream();
+const jc = JSONCodec();
+
+const sub = await js.subscribe('wa.events.>', {
+  durable: 'my-consumer',
+  ack_policy: 'explicit',
+});
+
+for await (const msg of sub) {
+  const event = jc.decode(msg.data);
+  console.log(`[${event.event}] ${event.session_id}:`, event.data);
+  msg.ack();
+}
+```
+
+### Subscribing (Python)
+
+```python
+import asyncio
+import nats
+
+async def main():
+    nc = await nats.connect("nats://localhost:4222")
+    js = nc.jetstream()
+
+    sub = await js.subscribe("wa.events.>", durable="my-consumer")
+    async for msg in sub.messages:
+        print(f"Received: {msg.data.decode()}")
+        await msg.ack()
+
+asyncio.run(main())
+```
+
+---
+
+## Outbound Messages
+
+Publish message commands to `wa.send.{session_id}` and WA-RS will consume and send them via WhatsApp.
+
+### Consumer Details
+
+| Property | Value |
+|----------|-------|
+| Consumer name | `wa-send-worker` |
+| Ack policy | Explicit |
+| Ack wait | 30 seconds |
+| Max retries | 3 |
+| Retry delay | 5 seconds (NAK) |
+
+### Command Format
+
+All commands are JSON objects with a `type` field:
+
+```json
+{
+  "type": "text",
+  "to": "628123456789",
+  "text": "Hello from NATS!",
+  "request_id": "optional-tracking-uuid"
+}
+```
+
+The `request_id` field is optional. If provided, it will be included in the `send_result` event.
+
+### Supported Message Types
+
+#### Text
+
+```json
+{
+  "type": "text",
+  "to": "628123456789",
+  "text": "Hello!",
+  "request_id": "uuid"
+}
+```
+
+#### Image
+
+```json
+{
+  "type": "image",
+  "to": "628123456789",
+  "image": { "url": "https://example.com/photo.jpg" },
+  "caption": "Check this out",
+  "request_id": "uuid"
+}
+```
+
+#### Video
+
+```json
+{
+  "type": "video",
+  "to": "628123456789",
+  "video": { "url": "https://example.com/video.mp4" },
+  "caption": "Watch this",
+  "request_id": "uuid"
+}
+```
+
+#### Audio
+
+```json
+{
+  "type": "audio",
+  "to": "628123456789",
+  "audio": { "url": "https://example.com/audio.ogg" },
+  "ptt": true,
+  "request_id": "uuid"
+}
+```
+
+#### Document
+
+```json
+{
+  "type": "document",
+  "to": "628123456789",
+  "document": { "url": "https://example.com/file.pdf" },
+  "filename": "report.pdf",
+  "caption": "Monthly report",
+  "request_id": "uuid"
+}
+```
+
+#### Sticker
+
+```json
+{
+  "type": "sticker",
+  "to": "628123456789",
+  "sticker": { "url": "https://example.com/sticker.webp" },
+  "request_id": "uuid"
+}
+```
+
+#### Location
+
+```json
+{
+  "type": "location",
+  "to": "628123456789",
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "name": "Jakarta",
+  "address": "DKI Jakarta, Indonesia",
+  "request_id": "uuid"
+}
+```
+
+#### Contact
+
+```json
+{
+  "type": "contact",
+  "to": "628123456789",
+  "contact": {
+    "display_name": "John Doe",
+    "phones": [
+      { "number": "+628111222333", "phone_type": "CELL" }
+    ]
+  },
+  "request_id": "uuid"
+}
+```
+
+#### Reaction
+
+```json
+{
+  "type": "reaction",
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "emoji": "👍",
+  "request_id": "uuid"
+}
+```
+
+#### Poll
+
+```json
+{
+  "type": "poll",
+  "to": "628123456789",
+  "name": "Favorite color?",
+  "options": ["Red", "Green", "Blue"],
+  "selectable_count": 1,
+  "request_id": "uuid"
+}
+```
+
+#### Buttons
+
+```json
+{
+  "type": "buttons",
+  "to": "628123456789",
+  "content_text": "Choose an option:",
+  "footer": "Tap a button",
+  "buttons": [
+    { "button_id": "yes", "display_text": "Yes" },
+    { "button_id": "no", "display_text": "No" }
+  ],
+  "header_text": "Confirmation",
+  "request_id": "uuid"
+}
+```
+
+#### List
+
+```json
+{
+  "type": "list",
+  "to": "628123456789",
+  "title": "Menu",
+  "description": "Choose from the menu:",
+  "button_text": "View Menu",
+  "sections": [
+    {
+      "title": "Food",
+      "rows": [
+        { "row_id": "pizza", "title": "Pizza", "description": "$10" },
+        { "row_id": "burger", "title": "Burger", "description": "$8" }
+      ]
+    }
+  ],
+  "footer": "Prices include tax",
+  "request_id": "uuid"
+}
+```
+
+#### Interactive
+
+```json
+{
+  "type": "interactive",
+  "to": "628123456789",
+  "body_text": "Click a button",
+  "footer_text": "Powered by WA-RS",
+  "buttons": [
+    {
+      "name": "quick_reply",
+      "button_params_json": "{\"display_text\":\"Help\",\"id\":\"help\"}"
+    }
+  ],
+  "request_id": "uuid"
+}
+```
+
+#### Revoke
+
+```json
+{
+  "type": "revoke",
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "original_sender": "628987654321",
+  "request_id": "uuid"
+}
+```
+
+#### Edit
+
+```json
+{
+  "type": "edit",
+  "to": "628123456789",
+  "message_id": "3EB0ABC123...",
+  "text": "Updated text",
+  "request_id": "uuid"
+}
+```
+
+#### Read
+
+```json
+{
+  "type": "read",
+  "chat_jid": "628123456789@s.whatsapp.net",
+  "sender": "628123456789@s.whatsapp.net",
+  "message_ids": ["3EB0ABC123..."],
+  "request_id": "uuid"
+}
+```
+
+### Media Data Formats
+
+For media fields (`image`, `video`, `audio`, `document`, `sticker`), you can use either URL or base64:
+
+```json
+// URL
+{ "url": "https://example.com/image.jpg" }
+
+// Base64
+{ "data": "iVBORw0KGgo...", "mimetype": "image/png" }
+```
+
+### Publishing Commands (NATS CLI)
+
+```bash
+# Send a text message
+nats pub "wa.send.my-session" '{"type":"text","to":"628123456789","text":"Hello from NATS!"}'
+
+# Send an image
+nats pub "wa.send.my-session" '{"type":"image","to":"628123456789","image":{"url":"https://example.com/photo.jpg"},"caption":"NATS image"}'
+```
+
+---
+
+## Send Results
+
+After processing an outbound command, WA-RS publishes a result to `wa.events.{session_id}.send_result`:
+
+```json
+{
+  "request_id": "uuid",
+  "success": true,
+  "message_id": "3EB0DEF456...",
+  "error": null,
+  "timestamp": 1700000000
+}
+```
+
+On failure:
+
+```json
+{
+  "request_id": "uuid",
+  "success": false,
+  "message_id": null,
+  "error": "Session error: Client not connected",
+  "timestamp": 1700000000
+}
+```
+
+---
+
+## REST API Endpoints
+
+### Get NATS Status
+
+```
+GET /api/v1/nats/status
+```
+
+Returns connection status and stream information.
+
+#### Response
+
+```json
+{
+  "enabled": true,
+  "connected": true,
+  "url": "nats://localhost:4222",
+  "events_stream": {
+    "name": "WA_EVENTS",
+    "messages": 1234,
+    "bytes": 567890,
+    "consumer_count": 2,
+    "first_seq": 1,
+    "last_seq": 1234
+  },
+  "send_stream": {
+    "name": "WA_SEND",
+    "messages": 0,
+    "bytes": 0,
+    "consumer_count": 1,
+    "first_seq": 1,
+    "last_seq": 56
+  }
+}
+```
+
+When NATS is disabled:
+
+```json
+{
+  "enabled": false,
+  "connected": false,
+  "url": null,
+  "events_stream": null,
+  "send_stream": null
+}
+```
+
+---
+
+### Purge Stream
+
+```
+POST /api/v1/nats/streams/{stream_name}/purge
+```
+
+Remove all messages from a stream.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `stream_name` | path | Stream name (`WA_EVENTS` or `WA_SEND`) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Stream 'WA_EVENTS' purged"
+}
+```
+
+---
+
+### List Consumers
+
+```
+GET /api/v1/nats/streams/{stream_name}/consumers
+```
+
+Get consumer count for a stream.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `stream_name` | path | Stream name (`WA_EVENTS` or `WA_SEND`) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "stream": "WA_EVENTS",
+  "consumer_count": 2
+}
+```
+
+---
+
+## Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| `NATS_URL` not set | NATS disabled entirely, webhooks-only mode |
+| NATS unreachable at startup | Log warning, continue without NATS |
+| NATS publish fails (incoming) | Log warning, does not block webhooks |
+| Outbound command parse fails | NAK, retry up to 3x, then dropped |
+| Session not connected (outbound) | NAK with 5s delay for retry |
+| WhatsApp send fails (outbound) | NAK with 5s delay for retry |
+
+---
+
+## Monitoring
+
+### NATS HTTP Monitoring
+
+If port 8222 is exposed, you can monitor NATS at:
+
+```
+http://localhost:8222/varz      # Server info
+http://localhost:8222/jsz       # JetStream info
+http://localhost:8222/connz     # Connections
+```
+
+### NATS CLI
+
+```bash
+# Check server status
+nats server info
+
+# List streams
+nats stream ls
+
+# Stream details
+nats stream info WA_EVENTS
+nats stream info WA_SEND
+
+# Consumer details
+nats consumer info WA_SEND wa-send-worker
+
+# Watch events in real-time
+nats sub "wa.events.>" --last=10
+```
