@@ -16,12 +16,9 @@ function HomepageHeader() {
           src="/img/logo.png"
           alt="Waxum mascot"
           style={{
-            width: 128,
-            height: 128,
+            width: 144,
+            height: 144,
             marginBottom: '1.25rem',
-            borderRadius: 24,
-            background: '#0e1512',
-            padding: 8,
           }}
         />
         <Heading as="h1" className="hero__title">
