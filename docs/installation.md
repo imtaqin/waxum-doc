@@ -6,7 +6,7 @@ sidebar_position: 2
 
 ## Quick Start
 
-Download the binary for your platform from [GitHub Releases](https://github.com/fdciabdul/waxum/releases) and run:
+Download the binary for your platform from [GitHub Releases](https://github.com/imtaqin/waxum/releases) and run:
 
 ```bash
 ./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
@@ -17,7 +17,7 @@ A PostgreSQL or MySQL database is required for metadata storage.
 ## Docker Compose
 
 ```bash
-git clone https://github.com/fdciabdul/waxum.git
+git clone https://github.com/imtaqin/waxum.git
 cd waxum
 ```
 
@@ -70,7 +70,7 @@ source $HOME/.cargo/env
 rustup default nightly
 
 # Clone and build
-git clone https://github.com/fdciabdul/waxum.git
+git clone https://github.com/imtaqin/waxum.git
 cd waxum
 cargo build --release
 
@@ -99,7 +99,7 @@ rustup target add x86_64-pc-windows-gnu
 choco install mingw -y
 
 # Clone and build
-git clone https://github.com/fdciabdul/waxum.git
+git clone https://github.com/imtaqin/waxum.git
 cd waxum
 cargo build --release --target x86_64-pc-windows-gnu
 
@@ -124,7 +124,7 @@ source $HOME/.cargo/env
 rustup default nightly
 
 # Clone and build
-git clone https://github.com/fdciabdul/waxum.git
+git clone https://github.com/imtaqin/waxum.git
 cd waxum
 cargo build --release
 

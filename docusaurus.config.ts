@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Waxum',
   tagline: 'WhatsApp REST API Gateway built with Rust',
-  favicon: 'img/logo.png',
+  favicon: 'img/favicon.png',
 
   future: {
     v4: true,
@@ -31,7 +31,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/fdciabdul/waxum/tree/main/documentation/',
+          editUrl: 'https://github.com/imtaqin/waxum/tree/main/documentation/',
         },
         blog: false,
         theme: {
@@ -80,7 +80,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/fdciabdul/waxum',
+          href: 'https://github.com/imtaqin/waxum',
           label: 'GitHub',
           position: 'right',
         },
@@ -124,10 +124,10 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            { label: 'GitHub', href: 'https://github.com/fdciabdul/waxum' },
-            { label: 'Docs source', href: 'https://github.com/fdciabdul/waxum-doc' },
-            { label: 'Releases', href: 'https://github.com/fdciabdul/waxum/releases' },
-            { label: 'Issues', href: 'https://github.com/fdciabdul/waxum/issues' },
+            { label: 'GitHub', href: 'https://github.com/imtaqin/waxum' },
+            { label: 'Docs source', href: 'https://github.com/imtaqin/waxum-doc' },
+            { label: 'Releases', href: 'https://github.com/imtaqin/waxum/releases' },
+            { label: 'Issues', href: 'https://github.com/imtaqin/waxum/issues' },
             { label: 'llms.txt', href: 'https://waxum.imtaqin.id/llms.txt' },
             { label: 'llms-full.txt', href: 'https://waxum.imtaqin.id/llms-full.txt' },
           ],

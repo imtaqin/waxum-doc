@@ -41,7 +41,7 @@ curl -H "Authorization: Bearer mysecrettoken" http://localhost:3451/health
 ## Using Docker Compose
 
 ```bash
-git clone https://github.com/fdciabdul/waxum.git
+git clone https://github.com/imtaqin/waxum.git
 cd waxum
 
 # Create .env
@@ -61,7 +61,7 @@ docker compose up -d
 
 2. **Clone and build**
    ```bash
-   git clone https://github.com/fdciabdul/waxum.git
+   git clone https://github.com/imtaqin/waxum.git
    cd waxum
    rustup default nightly
    cargo build --release
