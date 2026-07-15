@@ -1,30 +1,159 @@
-/**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
- */
+/* Waxum theme — emerald green + charcoal, matches the anime chat-bubble mark. */
 
-/* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-color-primary: #10b981;
+  --ifm-color-primary-dark: #0ea774;
+  --ifm-color-primary-darker: #0d9d6e;
+  --ifm-color-primary-darkest: #0a815a;
+  --ifm-color-primary-light: #14c98e;
+  --ifm-color-primary-lighter: #22d194;
+  --ifm-color-primary-lightest: #4dd8a6;
+
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #0a0f0d;
+  --ifm-footer-color: #cbd5d1;
+  --ifm-footer-link-color: #cbd5d1;
+  --ifm-footer-link-hover-color: #10b981;
+  --ifm-footer-title-color: #ffffff;
+
+  --ifm-font-family-base: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'Geist Mono', 'JetBrains Mono', 'SF Mono', monospace;
+  --ifm-heading-font-weight: 700;
+  --ifm-h1-font-size: 2.4rem;
+  --ifm-code-font-size: 92%;
+  --ifm-code-background: rgba(16, 185, 129, 0.08);
+  --ifm-code-color: #065f46;
+
+  --ifm-navbar-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  --ifm-hero-background-color: #0a0f0d;
+
+  --docusaurus-highlighted-code-line-bg: rgba(16, 185, 129, 0.14);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #34d399;
+  --ifm-color-primary-dark: #2ac287;
+  --ifm-color-primary-darker: #26b980;
+  --ifm-color-primary-darkest: #1f9a6a;
+  --ifm-color-primary-light: #4ddba6;
+  --ifm-color-primary-lighter: #58deac;
+  --ifm-color-primary-lightest: #80e7bf;
+
+  --ifm-background-color: #0a0f0d;
+  --ifm-background-surface-color: #0e1512;
+  --ifm-navbar-background-color: #0e1512;
+  --ifm-footer-background-color: #05080a;
+  --ifm-code-background: rgba(52, 211, 153, 0.12);
+  --ifm-code-color: #6ee7b7;
+
+  --docusaurus-highlighted-code-line-bg: rgba(52, 211, 153, 0.16);
+}
+
+/* Navbar polish — sit the anime logo in a clean rail. */
+.navbar {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+[data-theme='dark'] .navbar {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.navbar__logo img {
+  height: 30px;
+  width: 30px;
+  border-radius: 8px;
+}
+.navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Hero — matches the "premium whatsapp gateway" tagline. */
+.hero {
+  background: var(--ifm-hero-background-color);
+  color: #ffffff;
+}
+.hero__title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.hero__subtitle {
+  opacity: 0.75;
+}
+
+/* Buttons — pill radius, emerald accent. */
+.button {
+  border-radius: 999px;
+  font-weight: 600;
+  padding: 0.55rem 1.15rem;
+}
+.button--primary {
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+}
+.button--primary:hover {
+  background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+}
+.button--secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+.button--secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Cards + code blocks — rounder, softer. */
+.card,
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible {
+  border-radius: 12px;
+}
+.prism-code,
+pre {
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.14);
+}
+[data-theme='dark'] .prism-code,
+[data-theme='dark'] pre {
+  border-color: rgba(52, 211, 153, 0.14);
+}
+
+/* Sidebar active — emerald pill instead of bar. */
+.menu__link--active {
+  background: rgba(16, 185, 129, 0.10);
+  color: var(--ifm-color-primary-darker);
+  font-weight: 600;
+  border-radius: 8px;
+}
+[data-theme='dark'] .menu__link--active {
+  background: rgba(52, 211, 153, 0.14);
+  color: var(--ifm-color-primary-lighter);
+}
+
+/* Table of contents highlight. */
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary-dark);
+}
+[data-theme='dark'] .table-of-contents__link--active {
+  color: var(--ifm-color-primary-lighter);
+}
+
+/* Inline code chip. */
+code:not(pre code) {
+  padding: 0.12rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+}
+[data-theme='dark'] code:not(pre code) {
+  border-color: rgba(52, 211, 153, 0.18);
+}
+
+/* Footer type. */
+.footer__title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  opacity: 0.75;
 }

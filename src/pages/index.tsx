@@ -10,22 +10,33 @@ import styles from './index.module.css';
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
+    <header className={clsx('hero', styles.heroBanner)}>
       <div className="container">
         <img
           src="/img/logo.png"
-          alt="Waxum Logo"
-          style={{width: '150px', marginBottom: '1rem', borderRadius: '20px'}}
+          alt="Waxum mascot"
+          style={{
+            width: 128,
+            height: 128,
+            marginBottom: '1.25rem',
+            borderRadius: 24,
+            background: '#0e1512',
+            padding: 8,
+          }}
         />
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
+          <Link className="button button--primary button--lg" to="/docs/getting-started">
+            Get Started
+          </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/getting-started">
-            Get Started
+            to="/docs/api/sessions"
+            style={{marginLeft: '0.75rem'}}>
+            API Reference
           </Link>
         </div>
       </div>
@@ -33,13 +44,35 @@ function HomepageHeader() {
   );
 }
 
-function Feature({title, description, icon}: {title: string; description: string; icon?: string}) {
+function Feature({
+  title,
+  description,
+  icon,
+}: {
+  title: string;
+  description: string;
+  icon?: string;
+}) {
   return (
     <div className={clsx('col col--4')}>
-      <div className="text--center padding-horiz--md padding-vert--lg">
-        {icon && <div style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>{icon}</div>}
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
+      <div className="padding-horiz--md padding-vert--lg">
+        {icon && (
+          <div
+            style={{
+              fontSize: '1.6rem',
+              lineHeight: 1,
+              marginBottom: '0.75rem',
+              color: 'var(--ifm-color-primary)',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+            }}>
+            {icon}
+          </div>
+        )}
+        <Heading as="h3" style={{marginBottom: '0.4rem'}}>
+          {title}
+        </Heading>
+        <p style={{opacity: 0.75}}>{description}</p>
       </div>
     </div>
   );
@@ -51,53 +84,53 @@ function HomepageFeatures() {
       <div className="container">
         <div className="row">
           <Feature
-            icon="📱"
+            icon="//"
             title="Multi-Session"
-            description="Manage multiple WhatsApp accounts simultaneously with separate sessions."
+            description="Run dozens of WhatsApp accounts side by side. Each session is isolated with its own storage."
           />
           <Feature
-            icon="🦀"
+            icon="{ }"
             title="Built with Rust"
-            description="High performance and memory safety with the Rust programming language."
+            description="Native Tokio runtime. Small memory footprint, low latency, no GC pauses."
           />
           <Feature
-            icon="🔌"
-            title="REST API"
-            description="Simple HTTP API with Swagger UI documentation for easy integration."
+            icon="/*"
+            title="REST + Swagger"
+            description="Plain HTTP+JSON. OpenAPI schema and Swagger UI baked in at /swagger-ui."
           />
         </div>
         <div className="row">
           <Feature
-            icon="🪝"
+            icon="->"
             title="Webhooks"
-            description="Receive real-time events with HMAC-SHA256 signature verification."
+            description="Every event fans out to your endpoint with HMAC-SHA256 signature and circuit-breaker retries."
           />
           <Feature
-            icon="🔐"
+            icon="[]"
             title="JWT Auth"
-            description="Secure API access with JSON Web Token authentication."
+            description="Bearer tokens with per-session scopes. Superadmin token for provisioning."
           />
           <Feature
-            icon="🐳"
-            title="Docker Ready"
-            description="Deploy easily with Docker Compose and PostgreSQL."
+            icon="**"
+            title="Multi-DB"
+            description="PostgreSQL, MySQL, or SQLite. Docker Compose bundled with NATS JetStream fan-out."
           />
         </div>
         <div className="row">
           <Feature
-            icon="💬"
+            icon="<>"
             title="Rich Messages"
-            description="Send text, images, documents, audio, video, stickers, and location messages."
+            description="Text, image, video, audio, document, sticker, location, polls, buttons, lists, native-flow."
           />
           <Feature
-            icon="🖥️"
-            title="Terminal Dashboard"
-            description="Beautiful hacker-style dashboard with real-time session management."
+            icon="::"
+            title="Live Dashboard"
+            description="Bundled UI at / — session control, QR pair, connection status, event log."
           />
           <Feature
-            icon="📲"
-            title="QR & Pair Code"
-            description="Connect via QR code scanning or phone number pairing."
+            icon="**"
+            title="QR + Pair Code"
+            description="Pair by scanning the QR or by phone-code — same flow as WhatsApp Web / Desktop."
           />
         </div>
       </div>
@@ -107,71 +140,80 @@ function HomepageFeatures() {
 
 function DonationSection() {
   return (
-    <section style={{
-      background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-      padding: '4rem 0',
-      color: '#fff'
-    }}>
+    <section
+      style={{
+        background: '#0a0f0d',
+        padding: '4rem 0',
+        color: '#e2e8f0',
+      }}>
       <div className="container">
         <div className="text--center">
-          <Heading as="h2" style={{color: '#00ff9d', marginBottom: '1rem'}}>
+          <Heading as="h2" style={{color: '#10b981', marginBottom: '0.75rem'}}>
             Support This Project
           </Heading>
-          <p style={{maxWidth: '600px', margin: '0 auto 2rem', color: '#a0a0a0'}}>
-            If Waxum helps you, consider supporting the development to keep the project alive and growing.
+          <p
+            style={{
+              maxWidth: 620,
+              margin: '0 auto 2.5rem',
+              color: '#94a3b8',
+            }}>
+            If Waxum helps you, consider supporting so it stays maintained.
           </p>
 
-          <div className="row" style={{justifyContent: 'center', gap: '2rem'}}>
-            {/* Saweria */}
-            <div className="col col--4" style={{
-              background: 'rgba(0, 255, 157, 0.1)',
-              borderRadius: '12px',
-              padding: '2rem',
-              border: '1px solid rgba(0, 255, 157, 0.3)'
-            }}>
-              <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>☕</div>
-              <Heading as="h3" style={{color: '#fff', fontSize: '1.2rem'}}>Saweria</Heading>
-              <p style={{color: '#a0a0a0', fontSize: '0.9rem', marginBottom: '1rem'}}>
-                Support via Saweria (Indonesia)
+          <div className="row" style={{justifyContent: 'center', gap: '1.5rem'}}>
+            <div
+              className="col col--4"
+              style={{
+                background: '#0e1512',
+                borderRadius: 16,
+                padding: '2rem',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+              }}>
+              <div style={{color: '#10b981', fontWeight: 800, marginBottom: '0.4rem'}}>
+                Saweria
+              </div>
+              <p style={{color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.25rem'}}>
+                Local (Indonesia) tip jar. Any amount works.
               </p>
               <a
                 href="https://saweria.co/fdciabdul"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="button button--primary"
-                style={{background: '#00ff9d', color: '#000', border: 'none'}}
-              >
+                className="button button--primary">
                 Donate via Saweria
               </a>
             </div>
 
-            {/* Bank Transfer */}
-            <div className="col col--4" style={{
-              background: 'rgba(100, 150, 255, 0.1)',
-              borderRadius: '12px',
-              padding: '2rem',
-              border: '1px solid rgba(100, 150, 255, 0.3)'
-            }}>
-              <div style={{fontSize: '2rem', marginBottom: '0.5rem'}}>🏦</div>
-              <Heading as="h3" style={{color: '#fff', fontSize: '1.2rem'}}>Bank Transfer</Heading>
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                padding: '1rem',
-                marginTop: '1rem',
+            <div
+              className="col col--4"
+              style={{
+                background: '#0e1512',
+                borderRadius: 16,
+                padding: '2rem',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
                 textAlign: 'left',
-                fontFamily: 'monospace',
-                fontSize: '0.85rem'
               }}>
-                <div style={{marginBottom: '1rem'}}>
-                  <div style={{color: '#6c99bb'}}>// BNI</div>
-                  <div style={{color: '#00ff9d'}}>1882264360</div>
-                  <div style={{color: '#a0a0a0'}}>A/N: Abdul Muttaqin</div>
+              <div style={{color: '#10b981', fontWeight: 800, marginBottom: '0.75rem'}}>
+                Bank Transfer
+              </div>
+              <div
+                style={{
+                  background: '#05080a',
+                  borderRadius: 8,
+                  padding: '1rem',
+                  fontFamily: 'var(--ifm-font-family-monospace)',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.55,
+                }}>
+                <div style={{marginBottom: '0.75rem'}}>
+                  <div style={{color: '#64748b'}}>// BNI</div>
+                  <div style={{color: '#34d399'}}>1882264360</div>
+                  <div style={{color: '#94a3b8'}}>A/N Abdul Muttaqin</div>
                 </div>
                 <div>
-                  <div style={{color: '#6c99bb'}}>// Bank Mandiri</div>
-                  <div style={{color: '#00ff9d'}}>1330028497212</div>
-                  <div style={{color: '#a0a0a0'}}>A/N: Anisa Septiani Timur</div>
+                  <div style={{color: '#64748b'}}>// Bank Mandiri</div>
+                  <div style={{color: '#34d399'}}>1330028497212</div>
+                  <div style={{color: '#94a3b8'}}>A/N Anisa Septiani Timur</div>
                 </div>
               </div>
             </div>
@@ -183,11 +225,8 @@ function DonationSection() {
 }
 
 export default function Home(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
   return (
-    <Layout
-      title="Home"
-      description="WhatsApp REST API Gateway built with Rust">
+    <Layout title="Home" description="WhatsApp REST API Gateway built with Rust">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
