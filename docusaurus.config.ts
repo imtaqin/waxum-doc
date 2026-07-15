@@ -60,6 +60,26 @@ const config: Config = {
           label: 'Documentation',
         },
         {
+          to: '/docs/api/sessions',
+          label: 'API',
+          position: 'left',
+        },
+        {
+          to: '/docs/api/webhooks',
+          label: 'Webhooks',
+          position: 'left',
+        },
+        {
+          to: '/docs/api/health',
+          label: 'Health',
+          position: 'left',
+        },
+        {
+          href: 'https://wa-rs.imtaqin.id/llms.txt',
+          label: 'llms.txt',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/fdciabdul/wa-rs',
           label: 'GitHub',
           position: 'right',
@@ -72,23 +92,44 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {
-              label: 'Getting Started',
-              to: '/docs/getting-started',
-            },
-            {
-              label: 'API Reference',
-              to: '/docs/api/sessions',
-            },
+            { label: 'Introduction', to: '/' },
+            { label: 'Installation', to: '/docs/installation' },
+            { label: 'Getting Started', to: '/docs/getting-started' },
+            { label: 'Authentication', to: '/docs/authentication' },
+            { label: 'Dashboard', to: '/docs/dashboard' },
+          ],
+        },
+        {
+          title: 'API',
+          items: [
+            { label: 'Sessions', to: '/docs/api/sessions' },
+            { label: 'Messages', to: '/docs/api/messages' },
+            { label: 'Groups', to: '/docs/api/groups' },
+            { label: 'Contacts', to: '/docs/api/contacts' },
+            { label: 'Media', to: '/docs/api/media' },
+            { label: 'Calls', to: '/docs/api/calls' },
+          ],
+        },
+        {
+          title: 'Runtime',
+          items: [
+            { label: 'Webhooks', to: '/docs/api/webhooks' },
+            { label: 'Health & Metrics', to: '/docs/api/health' },
+            { label: 'Presence', to: '/docs/api/presence' },
+            { label: 'Privacy', to: '/docs/api/privacy' },
+            { label: 'NATS', to: '/docs/api/nats' },
+            { label: 'Operations', to: '/docs/api/operations' },
           ],
         },
         {
           title: 'More',
           items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/fdciabdul/wa-rs',
-            },
+            { label: 'GitHub', href: 'https://github.com/fdciabdul/wa-rs' },
+            { label: 'Docs source', href: 'https://github.com/fdciabdul/wa-rs-doc' },
+            { label: 'Releases', href: 'https://github.com/fdciabdul/wa-rs/releases' },
+            { label: 'Issues', href: 'https://github.com/fdciabdul/wa-rs/issues' },
+            { label: 'llms.txt', href: 'https://wa-rs.imtaqin.id/llms.txt' },
+            { label: 'llms-full.txt', href: 'https://wa-rs.imtaqin.id/llms-full.txt' },
           ],
         },
       ],
