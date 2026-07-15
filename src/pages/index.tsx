@@ -135,99 +135,12 @@ function HomepageFeatures() {
   );
 }
 
-function DonationSection() {
-  return (
-    <section
-      style={{
-        background: '#0a0f0d',
-        padding: '4rem 0',
-        color: '#e2e8f0',
-      }}>
-      <div className="container">
-        <div className="text--center">
-          <Heading as="h2" style={{color: '#10b981', marginBottom: '0.75rem'}}>
-            Support This Project
-          </Heading>
-          <p
-            style={{
-              maxWidth: 620,
-              margin: '0 auto 2.5rem',
-              color: '#94a3b8',
-            }}>
-            If Waxum helps you, consider supporting so it stays maintained.
-          </p>
-
-          <div className="row" style={{justifyContent: 'center', gap: '1.5rem'}}>
-            <div
-              className="col col--4"
-              style={{
-                background: '#0e1512',
-                borderRadius: 16,
-                padding: '2rem',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
-              }}>
-              <div style={{color: '#10b981', fontWeight: 800, marginBottom: '0.4rem'}}>
-                Saweria
-              </div>
-              <p style={{color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.25rem'}}>
-                Local (Indonesia) tip jar. Any amount works.
-              </p>
-              <a
-                href="https://saweria.co/fdciabdul"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="button button--primary">
-                Donate via Saweria
-              </a>
-            </div>
-
-            <div
-              className="col col--4"
-              style={{
-                background: '#0e1512',
-                borderRadius: 16,
-                padding: '2rem',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
-                textAlign: 'left',
-              }}>
-              <div style={{color: '#10b981', fontWeight: 800, marginBottom: '0.75rem'}}>
-                Bank Transfer
-              </div>
-              <div
-                style={{
-                  background: '#05080a',
-                  borderRadius: 8,
-                  padding: '1rem',
-                  fontFamily: 'var(--ifm-font-family-monospace)',
-                  fontSize: '0.85rem',
-                  lineHeight: 1.55,
-                }}>
-                <div style={{marginBottom: '0.75rem'}}>
-                  <div style={{color: '#64748b'}}>// BNI</div>
-                  <div style={{color: '#34d399'}}>1882264360</div>
-                  <div style={{color: '#94a3b8'}}>A/N Abdul Muttaqin</div>
-                </div>
-                <div>
-                  <div style={{color: '#64748b'}}>// Bank Mandiri</div>
-                  <div style={{color: '#34d399'}}>1330028497212</div>
-                  <div style={{color: '#94a3b8'}}>A/N Anisa Septiani Timur</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function Home(): ReactNode {
   return (
     <Layout title="Home" description="WhatsApp REST API Gateway built with Rust">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
-        <DonationSection />
       </main>
     </Layout>
   );
