@@ -5,7 +5,7 @@ slug: /
 
 # Introduction
 
-WA-RS is a high-performance WhatsApp REST API Gateway built with Rust. It provides a simple and secure way to integrate WhatsApp messaging capabilities into your applications.
+Waxum is a high-performance WhatsApp REST API Gateway built with Rust. It provides a simple and secure way to integrate WhatsApp messaging capabilities into your applications.
 
 ## Features
 
@@ -64,7 +64,7 @@ WA-RS is a high-performance WhatsApp REST API Gateway built with Rust. It provid
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                        WA-RS Gateway                          │
+│                        Waxum Gateway                          │
 ├──────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  ┌──────────────────┐  ┌───────────────┐   │
 │  │   REST API   │  │     Webhook      │  │     NATS      │   │

@@ -6,10 +6,10 @@ sidebar_position: 2
 
 ## Quick Start
 
-Download the binary for your platform from [GitHub Releases](https://github.com/fdciabdul/wa-rs/releases) and run:
+Download the binary for your platform from [GitHub Releases](https://github.com/fdciabdul/waxum/releases) and run:
 
 ```bash
-./wa-rs --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
+./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
 ```
 
 A PostgreSQL or MySQL database is required for metadata storage.
@@ -17,8 +17,8 @@ A PostgreSQL or MySQL database is required for metadata storage.
 ## Docker Compose
 
 ```bash
-git clone https://github.com/fdciabdul/wa-rs.git
-cd wa-rs
+git clone https://github.com/fdciabdul/waxum.git
+cd waxum
 ```
 
 Create a `.env` file:
@@ -34,7 +34,7 @@ SUPERADMIN_TOKEN=your-secret-token
 # Optional
 JWT_SECRET=your-jwt-signing-secret
 WHATSAPP_STORAGE_PATH=/app/whatsapp_sessions
-RUST_LOG=wa_rs=info,tower_http=info
+RUST_LOG=waxum=info,tower_http=info
 ```
 
 Then run:
@@ -43,7 +43,7 @@ Then run:
 docker compose up -d
 ```
 
-This starts **NATS** (message queue) and the **WA-RS API**. To also run a bundled PostgreSQL:
+This starts **NATS** (message queue) and the **Waxum API**. To also run a bundled PostgreSQL:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
@@ -70,12 +70,12 @@ source $HOME/.cargo/env
 rustup default nightly
 
 # Clone and build
-git clone https://github.com/fdciabdul/wa-rs.git
-cd wa-rs
+git clone https://github.com/fdciabdul/waxum.git
+cd waxum
 cargo build --release
 
 # Run
-./target/release/wa-rs --token mysecrettoken --db mysql://user:pass@localhost/wars
+./target/release/waxum --token mysecrettoken --db mysql://user:pass@localhost/wars
 ```
 
 ### Windows
@@ -99,12 +99,12 @@ rustup target add x86_64-pc-windows-gnu
 choco install mingw -y
 
 # Clone and build
-git clone https://github.com/fdciabdul/wa-rs.git
-cd wa-rs
+git clone https://github.com/fdciabdul/waxum.git
+cd waxum
 cargo build --release --target x86_64-pc-windows-gnu
 
 # Run
-.\target\x86_64-pc-windows-gnu\release\wa-rs.exe --token mysecrettoken --db mysql://user:pass@localhost/wars
+.\target\x86_64-pc-windows-gnu\release\waxum.exe --token mysecrettoken --db mysql://user:pass@localhost/wars
 ```
 
 If you build with the default MSVC target instead
@@ -124,18 +124,18 @@ source $HOME/.cargo/env
 rustup default nightly
 
 # Clone and build
-git clone https://github.com/fdciabdul/wa-rs.git
-cd wa-rs
+git clone https://github.com/fdciabdul/waxum.git
+cd waxum
 cargo build --release
 
 # Run
-./target/release/wa-rs --token mysecrettoken --db postgres://user:pass@localhost/wagateway
+./target/release/waxum --token mysecrettoken --db postgres://user:pass@localhost/wagateway
 ```
 
 ## CLI Arguments
 
 ```
-Usage: wa-rs [OPTIONS]
+Usage: waxum [OPTIONS]
 
 Options:
   -t, --token <TOKEN>    Set superadmin token
@@ -148,17 +148,17 @@ Examples:
 
 ```bash
 # MySQL with custom port
-./wa-rs --token mytoken --db mysql://user:pass@localhost:3306/wars --port 8080
+./waxum --token mytoken --db mysql://user:pass@localhost:3306/wars --port 8080
 
 # PostgreSQL
-./wa-rs -t mytoken -d postgres://user:pass@localhost:5432/wagateway
+./waxum -t mytoken -d postgres://user:pass@localhost:5432/wagateway
 ```
 
 CLI arguments override `.env` values.
 
 ## Database Setup
 
-WA-RS requires **PostgreSQL** or **MySQL** for metadata storage (sessions, webhooks). WhatsApp session data is stored separately in local SQLite files.
+Waxum requires **PostgreSQL** or **MySQL** for metadata storage (sessions, webhooks). WhatsApp session data is stored separately in local SQLite files.
 
 ### PostgreSQL
 
@@ -167,7 +167,7 @@ WA-RS requires **PostgreSQL** or **MySQL** for metadata storage (sessions, webho
 sudo -u postgres createdb wagateway
 
 # Run
-./wa-rs --token mytoken --db postgres://postgres:password@localhost:5432/wagateway
+./waxum --token mytoken --db postgres://postgres:password@localhost:5432/wagateway
 ```
 
 ### MySQL
@@ -177,11 +177,11 @@ sudo -u postgres createdb wagateway
 mysql -u root -p -e "CREATE DATABASE wars;"
 
 # Run
-./wa-rs --token mytoken --db mysql://root:password@localhost:3306/wars
+./waxum --token mytoken --db mysql://root:password@localhost:3306/wars
 ```
 
 :::info Legacy PostgreSQL Config
-If you don't set `DATABASE_URL`, WA-RS checks for legacy `POSTGRES_*` or `MYSQL_*` environment variables as fallback.
+If you don't set `DATABASE_URL`, Waxum checks for legacy `POSTGRES_*` or `MYSQL_*` environment variables as fallback.
 ```bash
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
@@ -233,7 +233,7 @@ POSTGRES_DB=wagateway
 ```bash
 DATABASE_URL=mysql://user:password@localhost:3306/wars
 SUPERADMIN_TOKEN=mysecrettoken
-RUST_LOG=wa_rs=info,tower_http=info
+RUST_LOG=waxum=info,tower_http=info
 ```
 
 ### PostgreSQL with NATS
@@ -244,7 +244,7 @@ SUPERADMIN_TOKEN=mysecrettoken
 JWT_SECRET=your-jwt-signing-secret
 WHATSAPP_STORAGE_PATH=./whatsapp_sessions
 NATS_URL=nats://localhost:4222
-RUST_LOG=wa_rs=info,tower_http=info
+RUST_LOG=waxum=info,tower_http=info
 ```
 
 ## Verify Installation

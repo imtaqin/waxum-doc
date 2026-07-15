@@ -8,7 +8,7 @@ Manage contacts and check WhatsApp availability.
 
 ## List Stored Contacts (v0.6.1+)
 
-Paginated dump of the contact directory wa-rs has built locally for the
+Paginated dump of the contact directory waxum has built locally for the
 session. Populated automatically as a side-effect of the event stream
 — no `usync` round-trip on read.
 
@@ -65,7 +65,7 @@ Web uses internally.
 :::
 
 ::: warning Privacy
-The directory is **per session** and stored on your wa-rs database.
+The directory is **per session** and stored on your waxum database.
 Don't expose this endpoint to untrusted callers — `full_name` here is
 the saved name from the phone's address book.
 :::

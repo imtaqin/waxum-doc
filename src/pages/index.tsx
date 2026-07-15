@@ -14,7 +14,7 @@ function HomepageHeader() {
       <div className="container">
         <img
           src="/img/logo.png"
-          alt="WA-RS Logo"
+          alt="Waxum Logo"
           style={{width: '150px', marginBottom: '1rem', borderRadius: '20px'}}
         />
         <Heading as="h1" className="hero__title">
@@ -118,7 +118,7 @@ function DonationSection() {
             Support This Project
           </Heading>
           <p style={{maxWidth: '600px', margin: '0 auto 2rem', color: '#a0a0a0'}}>
-            If WA-RS helps you, consider supporting the development to keep the project alive and growing.
+            If Waxum helps you, consider supporting the development to keep the project alive and growing.
           </p>
 
           <div className="row" style={{justifyContent: 'center', gap: '2rem'}}>

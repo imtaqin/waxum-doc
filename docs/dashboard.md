@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Swagger UI
 
-WA-RS includes an interactive Swagger UI for exploring and testing all API endpoints directly from your browser.
+Waxum includes an interactive Swagger UI for exploring and testing all API endpoints directly from your browser.
 
 ## Accessing Swagger UI
 

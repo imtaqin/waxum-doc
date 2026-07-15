@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'WA-RS',
+  title: 'Waxum',
   tagline: 'WhatsApp REST API Gateway built with Rust',
   favicon: 'img/logo.png',
 
@@ -11,11 +11,11 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://wa-rs.imtaqin.id',
+  url: 'https://waxum.imtaqin.id',
   baseUrl: '/',
 
   organizationName: 'fdciabdul',
-  projectName: 'wa-rs-doc',
+  projectName: 'waxum-doc',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -31,7 +31,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/fdciabdul/wa-rs/tree/main/documentation/',
+          editUrl: 'https://github.com/fdciabdul/waxum/tree/main/documentation/',
         },
         blog: false,
         theme: {
@@ -47,9 +47,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'WA-RS',
+      title: 'Waxum',
       logo: {
-        alt: 'WA-RS Logo',
+        alt: 'Waxum Logo',
         src: 'img/logo.png',
       },
       items: [
@@ -75,12 +75,12 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://wa-rs.imtaqin.id/llms.txt',
+          href: 'https://waxum.imtaqin.id/llms.txt',
           label: 'llms.txt',
           position: 'right',
         },
         {
-          href: 'https://github.com/fdciabdul/wa-rs',
+          href: 'https://github.com/fdciabdul/waxum',
           label: 'GitHub',
           position: 'right',
         },
@@ -124,16 +124,16 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            { label: 'GitHub', href: 'https://github.com/fdciabdul/wa-rs' },
-            { label: 'Docs source', href: 'https://github.com/fdciabdul/wa-rs-doc' },
-            { label: 'Releases', href: 'https://github.com/fdciabdul/wa-rs/releases' },
-            { label: 'Issues', href: 'https://github.com/fdciabdul/wa-rs/issues' },
-            { label: 'llms.txt', href: 'https://wa-rs.imtaqin.id/llms.txt' },
-            { label: 'llms-full.txt', href: 'https://wa-rs.imtaqin.id/llms-full.txt' },
+            { label: 'GitHub', href: 'https://github.com/fdciabdul/waxum' },
+            { label: 'Docs source', href: 'https://github.com/fdciabdul/waxum-doc' },
+            { label: 'Releases', href: 'https://github.com/fdciabdul/waxum/releases' },
+            { label: 'Issues', href: 'https://github.com/fdciabdul/waxum/issues' },
+            { label: 'llms.txt', href: 'https://waxum.imtaqin.id/llms.txt' },
+            { label: 'llms-full.txt', href: 'https://waxum.imtaqin.id/llms-full.txt' },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} WA-RS. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Waxum. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

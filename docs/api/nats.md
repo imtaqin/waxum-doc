@@ -4,18 +4,18 @@ sidebar_position: 11
 
 # NATS JetStream
 
-WA-RS integrates with [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) for durable event streaming and queue-based outbound messaging. NATS is **optional** — if `NATS_URL` is not set, the API works exactly as before using webhooks only.
+Waxum integrates with [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) for durable event streaming and queue-based outbound messaging. NATS is **optional** — if `NATS_URL` is not set, the API works exactly as before using webhooks only.
 
 ## Overview
 
 NATS JetStream provides two capabilities:
 
 1. **Incoming Events** — All WhatsApp events are published to a JetStream stream, allowing external consumers to subscribe and process events with delivery guarantees
-2. **Outbound Messages** — External systems can publish message commands to a queue, and WA-RS will consume and send them via WhatsApp
+2. **Outbound Messages** — External systems can publish message commands to a queue, and Waxum will consume and send them via WhatsApp
 
 ```
 ┌──────────────┐     wa.events.{session}.{type}     ┌──────────────────┐
-│   WA-RS      │ ─────────────────────────────────► │  Your Consumer   │
+│   Waxum      │ ─────────────────────────────────► │  Your Consumer   │
 │   Gateway    │                                     │  (subscribe)     │
 │              │ ◄───────────────────────────────── │                  │
 └──────────────┘     wa.send.{session}               │  Your Publisher  │
@@ -171,7 +171,7 @@ asyncio.run(main())
 
 ## Outbound Messages
 
-Publish message commands to `wa.send.{session_id}` and WA-RS will consume and send them via WhatsApp.
+Publish message commands to `wa.send.{session_id}` and Waxum will consume and send them via WhatsApp.
 
 ### Consumer Details
 
@@ -373,7 +373,7 @@ The `request_id` field is optional. If provided, it will be included in the `sen
   "type": "interactive",
   "to": "628123456789",
   "body_text": "Click a button",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "buttons": [
     {
       "name": "quick_reply",
@@ -446,7 +446,7 @@ nats pub "wa.send.my-session" '{"type":"image","to":"628123456789","image":{"url
 
 ## Send Results
 
-After processing an outbound command, WA-RS publishes a result to `wa.events.{session_id}.send_result`:
+After processing an outbound command, Waxum publishes a result to `wa.events.{session_id}.send_result`:
 
 ```json
 {

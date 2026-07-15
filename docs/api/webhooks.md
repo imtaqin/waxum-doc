@@ -299,7 +299,7 @@ streams as a series of `message` events with the same `message_id`.
 
 ## Signature Verification
 
-If you provide a `secret`, WA-RS will sign the payload with HMAC-SHA256.
+If you provide a `secret`, Waxum will sign the payload with HMAC-SHA256.
 
 The signature is sent in the `X-Webhook-Signature` header:
 

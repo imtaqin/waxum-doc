@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Authentication
 
-WA-RS uses token-based authentication. All API endpoints (except `/health` and `/swagger-ui`) require a valid token.
+Waxum uses token-based authentication. All API endpoints (except `/health` and `/swagger-ui`) require a valid token.
 
 ## Setting Your Token
 
@@ -13,7 +13,7 @@ There are three ways to set your superadmin token:
 ### 1. CLI Argument (recommended for quick start)
 
 ```bash
-./wa-rs --token YOUR_TOKEN
+./waxum --token YOUR_TOKEN
 ```
 
 ### 2. Environment Variable
@@ -31,7 +31,7 @@ SUPERADMIN_TOKEN=YOUR_TOKEN
 Your token can be **any string** you choose (e.g. `my-secret-token-123`). No need to generate a JWT manually.
 
 :::tip
-If you don't set `SUPERADMIN_TOKEN`, WA-RS auto-generates a JWT token and prints it to the console on startup. Setting your own token is simpler and recommended.
+If you don't set `SUPERADMIN_TOKEN`, Waxum auto-generates a JWT token and prints it to the console on startup. Setting your own token is simpler and recommended.
 :::
 
 ## Using the Token
@@ -94,7 +94,7 @@ curl -X POST \
 
 ## How Authentication Works
 
-WA-RS checks tokens in this order:
+Waxum checks tokens in this order:
 
 1. **SUPERADMIN_TOKEN match** — if the Bearer token matches `SUPERADMIN_TOKEN`, access is granted immediately
 2. **JWT validation** — if no match, the token is decoded as a JWT signed with `JWT_SECRET`

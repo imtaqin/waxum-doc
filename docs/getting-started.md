@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Getting Started
 
-WA-RS is a multi-session WhatsApp REST API gateway built with Rust. It provides a simple HTTP interface to interact with WhatsApp Web.
+Waxum is a multi-session WhatsApp REST API gateway built with Rust. It provides a simple HTTP interface to interact with WhatsApp Web.
 
 ## Features
 
@@ -24,13 +24,13 @@ WA-RS is a multi-session WhatsApp REST API gateway built with Rust. It provides 
 ### With MySQL
 
 ```bash
-./wa-rs --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
+./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
 ```
 
 ### With PostgreSQL
 
 ```bash
-./wa-rs --token mysecrettoken --db postgres://user:pass@localhost:5432/wagateway
+./waxum --token mysecrettoken --db postgres://user:pass@localhost:5432/wagateway
 ```
 
 ```bash
@@ -41,8 +41,8 @@ curl -H "Authorization: Bearer mysecrettoken" http://localhost:3451/health
 ## Using Docker Compose
 
 ```bash
-git clone https://github.com/fdciabdul/wa-rs.git
-cd wa-rs
+git clone https://github.com/fdciabdul/waxum.git
+cd waxum
 
 # Create .env
 cat > .env << 'EOF'
@@ -61,8 +61,8 @@ docker compose up -d
 
 2. **Clone and build**
    ```bash
-   git clone https://github.com/fdciabdul/wa-rs.git
-   cd wa-rs
+   git clone https://github.com/fdciabdul/waxum.git
+   cd waxum
    rustup default nightly
    cargo build --release
    ```
@@ -70,21 +70,21 @@ docker compose up -d
 3. **Run**
    ```bash
    # With MySQL
-   ./target/release/wa-rs --token mysecrettoken --db mysql://user:pass@localhost/mydb
+   ./target/release/waxum --token mysecrettoken --db mysql://user:pass@localhost/mydb
 
    # With PostgreSQL
-   ./target/release/wa-rs --token mysecrettoken --db postgres://user:pass@localhost/wagateway
+   ./target/release/waxum --token mysecrettoken --db postgres://user:pass@localhost/wagateway
 
    # With .env file
    cp .env.example .env
    # Edit .env with your settings
-   ./target/release/wa-rs
+   ./target/release/waxum
    ```
 
 ## CLI Options
 
 ```
-Usage: wa-rs [OPTIONS]
+Usage: waxum [OPTIONS]
 
 Options:
   -t, --token <TOKEN>    Set superadmin token

@@ -13,7 +13,7 @@ addressing. Sending to a legacy `phone@s.whatsapp.net` JID for a
 LID-only contact is accepted by the WA edge **but silently dropped** —
 no error, no delivery.
 
-Every `/messages/*` endpoint in wa-rs runs the `to` field through
+Every `/messages/*` endpoint in waxum runs the `to` field through
 `resolve_recipient_jid`:
 
 | `to` shape | What happens |
@@ -39,7 +39,7 @@ that was actually used:
 ::: tip Always send the resolved JID back to clients
 Once you receive the `to` field with `@lid` in the response, persist it
 on the contact record. Subsequent sends become a single hop again on
-the wa-rs side too.
+the waxum side too.
 :::
 
 ## Send Text Message
@@ -53,7 +53,7 @@ POST /api/v1/sessions/{session_id}/messages/text
 ```json
 {
   "to": "628123456789",
-  "text": "Hello from WA-RS!"
+  "text": "Hello from Waxum!"
 }
 ```
 
@@ -387,7 +387,7 @@ POST /api/v1/sessions/{session_id}/messages/buttons
 {
   "to": "628123456789",
   "content_text": "Please choose an option",
-  "footer": "Powered by WA-RS",
+  "footer": "Powered by Waxum",
   "buttons": [
     {
       "button_id": "btn_1",
@@ -446,7 +446,7 @@ POST /api/v1/sessions/{session_id}/messages/list
       ]
     }
   ],
-  "footer": "Powered by WA-RS"
+  "footer": "Powered by Waxum"
 }
 ```
 
@@ -476,7 +476,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 {
   "to": "628123456789",
   "body_text": "Choose an action",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "buttons": [
     {
       "name": "quick_reply",
@@ -506,7 +506,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 `viewOnceMessageV2`-wrapped interactive messages do **not render** in
 WhatsApp Web / Desktop — they show as "This message couldn't load.
 Open the message on your phone to view it." This is a WA Web
-limitation, not a wa-rs bug. Buttons render and click correctly on the
+limitation, not a waxum bug. Buttons render and click correctly on the
 WhatsApp mobile app.
 :::
 
@@ -528,7 +528,7 @@ POST /api/v1/sessions/{session_id}/messages/cta-url
 {
   "to": "628123456789",
   "body_text": "Check out our latest catalog",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "display_text": "Open website",
   "url": "https://example.com/catalog",
   "merchant_url": "https://example.com"
