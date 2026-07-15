@@ -15,7 +15,7 @@ const config: Config = {
   baseUrl: '/',
 
   organizationName: 'fdciabdul',
-  projectName: 'wa-rs',
+  projectName: 'wa-rs-doc',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
