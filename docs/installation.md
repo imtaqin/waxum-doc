@@ -9,10 +9,21 @@ sidebar_position: 2
 Download the binary for your platform from [GitHub Releases](https://github.com/imtaqin/waxum/releases) and run:
 
 ```bash
-./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
+./waxum --token mysecrettoken
 ```
 
-A PostgreSQL or MySQL database is required for metadata storage.
+That's it. No database configured — Waxum drops a `waxum.db` SQLite file
+next to the binary and stores everything (sessions, webhooks, DLQ) there.
+Zero config.
+
+Scale-out or need Postgres / MySQL? Pass a `DATABASE_URL`:
+
+```bash
+./waxum --token mysecrettoken --db postgres://user:pass@localhost:5432/waxum
+./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/waxum
+```
+
+Schema migrations run automatically at startup on every backend.
 
 ## Docker Compose
 
@@ -156,38 +167,60 @@ Examples:
 
 CLI arguments override `.env` values.
 
-## Database Setup
+## Database
 
-Waxum requires **PostgreSQL** or **MySQL** for metadata storage (sessions, webhooks). WhatsApp session data is stored separately in local SQLite files.
+Waxum runs against three backends. Pick one, or pick none — the default
+is fine.
+
+### SQLite (default, zero-config)
+
+Leave `DATABASE_URL` empty and Waxum drops a local SQLite file next to
+the binary at `./waxum.db`. Schema is auto-migrated on boot. Good for
+development and single-node production.
+
+Override the path if you want:
+
+```bash
+./waxum --token mytoken --db sqlite://./data/waxum.db
+# or
+SQLITE_PATH=./data/waxum.db ./waxum --token mytoken
+```
 
 ### PostgreSQL
 
-```bash
-# Create database
-sudo -u postgres createdb wagateway
+For scale-out, HA, and shared metadata across multiple Waxum nodes:
 
-# Run
-./waxum --token mytoken --db postgres://postgres:password@localhost:5432/wagateway
+```bash
+sudo -u postgres createdb waxum
+
+./waxum --token mytoken --db postgres://postgres:password@localhost:5432/waxum
 ```
 
 ### MySQL
 
-```bash
-# Create database
-mysql -u root -p -e "CREATE DATABASE wars;"
+Same story, MySQL flavour:
 
-# Run
-./waxum --token mytoken --db mysql://root:password@localhost:3306/wars
+```bash
+mysql -u root -p -e "CREATE DATABASE waxum;"
+
+./waxum --token mytoken --db mysql://root:password@localhost:3306/waxum
 ```
 
-:::info Legacy PostgreSQL Config
-If you don't set `DATABASE_URL`, Waxum checks for legacy `POSTGRES_*` or `MYSQL_*` environment variables as fallback.
+Every backend runs the same idempotent `CREATE TABLE IF NOT EXISTS` +
+`ALTER TABLE ADD COLUMN IF NOT EXISTS` sequence at startup — no manual
+migrations, no `docker compose up` bootstrapping, no schema drift.
+
+:::info Legacy Postgres env vars
+If `DATABASE_URL` is unset and you set `POSTGRES_*` or `MYSQL_*` env
+vars, Waxum picks those up as fallback. They still work; prefer the
+`DATABASE_URL` form for new deployments.
+
 ```bash
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your-password
-POSTGRES_DB=wagateway
+POSTGRES_DB=waxum
 ```
 :::
 
@@ -197,7 +230,7 @@ POSTGRES_DB=wagateway
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | *(none — required)* | Database connection URL (`postgres://` or `mysql://`) |
+| `DATABASE_URL` | *(none — falls back to `sqlite://./waxum.db`)* | Database connection URL (`postgres://`, `mysql://`, or `sqlite://`) |
 
 ### Authentication
 
