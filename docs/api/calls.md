@@ -4,7 +4,8 @@ sidebar_position: 9
 
 # Calls
 
-REST surface for WhatsApp voice calls. Two families of endpoints:
+REST surface for WhatsApp voice and video calls. Three families of
+endpoints:
 
 - **Signalling** — [`ring`](#ring), [`reject`](#reject),
   [`accept`](#accept), [`terminate`](#terminate). Attention-grab pings
@@ -14,21 +15,39 @@ REST surface for WhatsApp voice calls. Two families of endpoints:
   call and stream real audio into it (synthesised speech or an
   arbitrary audio file / URL). The peer picks up the call and hears
   your audio, then waxum hangs up automatically once playback ends.
+- **Real-time WebSocket** — the [bidirectional media WebSocket](#media-websocket),
+  for live audio and (since v0.9.0) video, driven from your own code
+  instead of a canned payload.
 
-Media is fed through the upstream `whatsapp-rust` VoIP engine as
-16 kHz mono PCM, encoded to Opus on the fly. 1:1 video call
-signalling is supported (see `kind: "video"` on [`ring`](#ring));
-video media (frame ingest) is not yet exposed at the REST layer —
-drive `voip::CallHandle::start_video` from Rust directly if you need
-it.
+Audio media is fed through the upstream `whatsapp-rust` VoIP engine as
+16 kHz mono PCM, encoded to native MLOW frames on the fly — the same
+codec the WhatsApp app itself uses on 1:1 calls. 1:1 video is
+supported both for signalling (`kind: "video"` on [`ring`](#ring)) and
+for real media, via `kind=av` on the [media WebSocket](#media-websocket).
+
+:::warning Group calls are not supported
+`whatsapp-rust` has no multi-party call relay/SFU client — the VoIP
+engine only speaks the single-peer 1:1 protocol. This is a hard
+limitation at the library level, not a gap waxum could close at the
+REST layer. Every call endpoint here is 1:1 only.
+:::
 
 :::note Server requirements
-- **`/calls/play`** — requires `ffmpeg` on `$PATH` (used to decode
-  arbitrary sources to PCM 16 kHz mono).
-- **`/calls/tts`** — requires the [`edge-tts`](https://pypi.org/project/edge-tts)
-  Python CLI on `$PATH` for Microsoft Edge neural-voice synthesis.
-- Both endpoints work fully offline once the audio bytes are in
-  memory; only the initial fetch/synth step touches the network.
+- **`/calls/play`** — requires `ffmpeg` on `$PATH` to decode arbitrary
+  audio sources (mp3/wav/ogg/m4a/URLs) down to PCM 16 kHz mono.
+- **`/calls/tts`** — requires `ffmpeg` on `$PATH` too (Edge TTS returns
+  MP3, which is decoded through the same ffmpeg step), but does
+  **not** need the `edge-tts` Python CLI or a Python interpreter —
+  speech synthesis itself runs through the pure-Rust
+  [`msedge-tts`](https://crates.io/crates/msedge-tts) crate, which
+  talks the Microsoft Edge readaloud WebSocket directly. This changed
+  from earlier versions that shelled out to the `edge-tts` CLI.
+- **`/calls/*/transcript`** — calls out to an external
+  whisper.cpp-compatible HTTP server via `WHISPER_API_URL`. No speech
+  model or C++ toolchain is bundled into or required by the waxum
+  binary itself — see [Transcribe Call Recording](#transcribe-call-recording).
+- Signalling-only endpoints (`ring`, `reject`, `accept`, `terminate`)
+  have no external dependencies.
 :::
 
 ## Ring
@@ -60,7 +79,8 @@ the peer's phone shows the video-call incoming UI instead of the plain
 audio-call one. `ring` itself does not carry media — the peer hears a
 ringtone, then the call drops with "not connected" after the ring
 timeout. For calls with real audio, use [`/tts`](#tts) or
-[`/play`](#play) instead.
+[`/play`](#play); for real audio **and** video, use the
+[media WebSocket](#media-websocket) with `kind=av`.
 
 ### Response
 
@@ -179,9 +199,10 @@ play nothing, the fix is on v0.7.9.
 ### Server prerequisites
 - **`ffmpeg`** on `$PATH` — used to decode arbitrary sources
   (mp3/wav/ogg/m4a/…) down to PCM 16 kHz mono. Required by both
-  `/tts` and `/play`. No other external dependency: Microsoft Edge
-  TTS voices run through the `msedge-tts` Rust crate directly, so
-  neither the `edge-tts` CLI nor a Python interpreter is needed.
+  `/tts` and `/play`. No other external dependency for speech itself:
+  Microsoft Edge TTS voices run through the `msedge-tts` Rust crate
+  directly, so neither the `edge-tts` CLI nor a Python interpreter is
+  needed.
 
 ## TTS
 
@@ -220,8 +241,8 @@ POST /api/v1/sessions/{session_id}/calls/tts
 
 Voice ids are the standard edge-tts catalogue —
 `id-ID-ArdiNeural` (Bahasa Indonesia, male), `en-US-JennyNeural`,
-`ja-JP-NanamiNeural`, and so on. Run `edge-tts --list-voices` to see
-the full list.
+`ja-JP-NanamiNeural`, and so on. `GET /api/v1/voices` returns the full
+list this waxum instance can see.
 
 ### Response
 
@@ -294,13 +315,17 @@ Practical notes for playing music:
 
 When `record: true` is passed to `/tts` or `/play`, waxum decodes the
 peer's incoming MLOW frames back to 16 kHz mono PCM and writes them
-to disk as a WAV file. The file lives on the waxum host at:
+to disk as a WAV file, keyed by session and call id
+(`{session_id}/recordings/{call_id}.wav`).
 
-```
-{WHATSAPP_STORAGE_PATH}/{session_id}/recordings/{call_id}.wav
-```
+By default this lives on the local filesystem, under
+`{WHATSAPP_STORAGE_PATH}/{session_id}/recordings/{call_id}.wav`. It
+can be redirected to S3-compatible object storage instead (real AWS
+S3, MinIO, R2, Wasabi, ...) by setting `S3_BUCKET` — see
+[S3 recording storage](#s3-recording-storage) below.
 
-It is also exposed over HTTP for download:
+It is also exposed over HTTP for download, regardless of which backend
+holds it:
 
 ```
 GET /api/v1/sessions/{session_id}/calls/{call_id}/recording.wav
@@ -316,19 +341,49 @@ empty WAV placeholder so the download endpoint always returns `200`
 after the call ends. Duration of the file is your ground truth for
 "did the peer actually say anything".
 
-## Bidirectional media WebSocket
+### S3 recording storage
 
-For real-time audio streaming (voice bots, live TTS, live
-transcription of the peer), waxum exposes a WebSocket that carries
-raw PCM in both directions:
+Set `S3_BUCKET` to switch recording storage from local disk to an
+S3-compatible bucket:
+
+| Env var | Required | Description |
+|---|---|---|
+| `S3_BUCKET` | Yes (to enable S3) | Bucket name. Unset = local filesystem (default) |
+| `S3_ENDPOINT` | No | S3-compatible endpoint URL. Default `https://s3.amazonaws.com` |
+| `S3_REGION` | No | Default `us-east-1` |
+| `AWS_ACCESS_KEY_ID` | Yes (with `S3_BUCKET`) | Standard AWS-style credential env var |
+| `AWS_SECRET_ACCESS_KEY` | Yes (with `S3_BUCKET`) | Standard AWS-style credential env var |
+
+Call recordings are the only "media" waxum itself ever writes to
+disk — message media (images, video, documents) flows straight through
+to WhatsApp's own CDN and is never persisted locally, so recordings
+are the only thing this setting affects.
+
+If the S3 connection fails at startup, waxum logs an error and falls
+back to local filesystem storage rather than refusing to boot —
+recordings are a best-effort feature, same philosophy as webhook
+fan-out and message-search indexing elsewhere in waxum.
+
+## Media WebSocket
+
+For real-time audio (and, since v0.9.0, video) streaming — voice bots,
+live TTS, live transcription of the peer, or a full video call client —
+waxum exposes a WebSocket that carries media in both directions:
 
 ```
-GET /api/v1/sessions/{session_id}/calls/media/ws?to=<phone_or_jid>
+GET /api/v1/sessions/{session_id}/calls/media/ws?to=<phone_or_jid>&kind=audio
 ```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient phone number or full JID |
+| `kind` | string | No | `"audio"` (default) — audio-only, original wire format. `"av"` — audio **and** video, tagged wire format. See below |
 
 Upgrades the HTTP connection to a WebSocket. On upgrade waxum places
 the outbound call. The first frame back is a text-frame JSON metadata
-blob describing the audio format:
+blob describing the media format:
 
 ```json
 {
@@ -338,22 +393,89 @@ blob describing the audio format:
   "to": "628123456789@s.whatsapp.net",
   "sample_rate": 16000,
   "frame_samples": 960,
-  "encoding": "pcm_s16le_mono_16khz"
+  "encoding": "pcm_s16le_mono_16khz",
+  "video": false,
+  "video_encoding": null,
+  "frame_format": "raw_pcm"
 }
 ```
 
-After that, binary WebSocket frames flow both ways:
+`video` / `video_encoding` / `frame_format` reflect the requested
+`kind`; with `kind=av` you get `"video": true`,
+`"video_encoding": "h264_annexb"`, `"frame_format": "tagged"`.
+
+### `kind=audio` — audio only (original format, unchanged)
+
+Binary WebSocket frames carry **raw PCM directly**, no header —
+identical to the wire format from before video support existed, so
+existing audio-bot integrations need no changes:
+
 - **Client → server** — raw PCM (`s16le`, mono, 16 kHz). Prefer
   chunks of 960 samples = 1920 bytes each (60 ms of audio).
-- **Server → client** — peer's PCM in the same shape, streamed as
-  the media arrives.
+- **Server → client** — peer's PCM in the same shape, streamed as the
+  media arrives.
 
-Closing the WebSocket, or a transport error, hangs up the call. Only
-`kind=audio` is supported today; video will return `400`.
+### `kind=av` — audio + video (tagged format)
 
-Ideal use case: an AI voice agent (LLM + STT + TTS in a loop) driving
-a live phone conversation, without waxum having to know anything
-about the assistant's logic.
+Because the socket now carries two independent streams, every binary
+frame in both directions is prefixed with a 1-byte media-type tag:
+
+| Tag | Meaning | Payload |
+|---|---|---|
+| `0x00` | Audio | Raw PCM (`s16le`, mono, 16 kHz) — same bytes as the `kind=audio` payload, just with the tag byte in front |
+| `0x01` | Video | 2-byte header (`keyframe: u8`, `orientation: u8`) followed by raw H.264 Annex-B access unit bytes |
+
+:::note waxum is transport-only for video
+waxum relays H.264 Annex-B bytes between the WhatsApp VoIP media
+session and your WebSocket client — it does **not** encode or decode
+video itself. Your WebSocket client must bring its own H.264 encoder
+(e.g. drive `ffmpeg` or a hardware encoder) for outgoing video, and
+its own decoder for incoming video. This mirrors the "waxum calls out,
+doesn't do the media work" philosophy of [`/tts`](#tts) and
+[transcription](#transcribe-call-recording).
+:::
+
+Closing the WebSocket, or a transport error, hangs up the call.
+
+Ideal use cases: an AI voice agent (LLM + STT + TTS in a loop) driving
+a live phone conversation without waxum knowing anything about the
+assistant's logic; or a custom video-calling client that wants raw
+access to the H.264 stream instead of a canned TTS/play payload.
+
+## Transcribe Call Recording
+
+Forward a finished call's recording to an external whisper.cpp-style
+HTTP transcription server and return the text. Added in v0.9.1.
+
+```
+POST /api/v1/sessions/{session_id}/calls/{call_id}/transcript
+```
+
+Requires the `WHISPER_API_URL` environment variable, pointed at a
+whisper.cpp-compatible HTTP server (e.g. the whisper.cpp `server`
+example, run separately — in its own container or process). waxum
+posts the recording as a `multipart/form-data` `file` field and
+expects back a JSON body shaped `{"text": "..."}`.
+
+:::note Not bundled into waxum
+Speech-to-text is entirely delegated to whatever you point
+`WHISPER_API_URL` at. Building and running waxum itself requires no
+C++ toolchain, no whisper model file, and no GPU — the binary just
+makes an HTTP call. If `WHISPER_API_URL` is unset, the endpoint
+returns `500` explaining how to stand one up.
+:::
+
+### Response
+
+```json
+{
+  "text": "Hi, this is a message about your appointment tomorrow..."
+}
+```
+
+Fails with `404`-flavored `500` if the recording isn't there yet (call
+hasn't ended, or was never started with `record: true`) — wait until
+the peer hangs up, then retry.
 
 ## Incoming Call Webhook
 

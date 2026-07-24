@@ -294,7 +294,7 @@ The `request_id` field is optional. If provided, it will be included in the `sen
   "contact": {
     "display_name": "John Doe",
     "phones": [
-      { "number": "+628111222333", "phone_type": "CELL" }
+      { "number": "+628123456789", "phone_type": "CELL" }
     ]
   },
   "request_id": "uuid"

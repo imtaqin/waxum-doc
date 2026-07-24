@@ -310,6 +310,203 @@ GET /api/v1/sessions/{session_id}/device
 
 ---
 
+## Session Tags
+
+Free-form short strings an operator attaches to a session to organise
+a fleet — e.g. `cs`, `blast-campaign-2`, `client:acme`, `region:jkt`.
+Added in v0.7.13.
+
+:::note In-memory, not a DB table
+Tags live in-memory on the running instance and are snapshotted to
+`{WHATSAPP_STORAGE_PATH}/session_tags.json` on every mutation, so a
+restart reloads them from that file rather than losing them. They are
+not stored in the SQL database alongside sessions/messages/etc. Not on
+the send hot path — tags are only consulted when `?tag=` is present on
+[List Sessions](#list-sessions), or by the console's overview
+grouping.
+:::
+
+### List Session Tags
+
+```
+GET /api/v1/sessions/{session_id}/tags
+```
+
+### Response
+
+```json
+{
+  "session_id": "my-session",
+  "tags": ["cs", "region:jkt"]
+}
+```
+
+### Replace Session Tags
+
+Overwrites the full tag set for a session.
+
+```
+PUT /api/v1/sessions/{session_id}/tags
+```
+
+#### Request Body
+
+```json
+{
+  "tags": ["cs", "region:jkt", "client:acme"]
+}
+```
+
+#### Response
+
+Same shape as [List Session Tags](#list-session-tags).
+
+### Add Session Tag
+
+Adds a single tag without disturbing the rest of the set.
+
+```
+POST /api/v1/sessions/{session_id}/tags
+```
+
+#### Request Body
+
+```json
+{
+  "tag": "priority"
+}
+```
+
+#### Response
+
+```json
+{
+  "session_id": "my-session",
+  "tag": "priority",
+  "changed": true,
+  "tags": ["cs", "region:jkt", "priority"]
+}
+```
+
+`changed` is `false` when the tag was already present.
+
+### Remove Session Tag
+
+```
+DELETE /api/v1/sessions/{session_id}/tags/{tag}
+```
+
+#### Response
+
+Same shape as [Add Session Tag](#add-session-tag), with `changed`
+reflecting whether the tag was actually present to remove.
+
+### List All Tags
+
+Every distinct tag across the fleet, with how many sessions carry it.
+
+```
+GET /api/v1/tags
+```
+
+#### Response
+
+```json
+[
+  { "tag": "cs", "session_count": 8 },
+  { "tag": "region:jkt", "session_count": 3 }
+]
+```
+
+Sorted by `session_count` descending, then alphabetically.
+
+### Filter Sessions by Tag
+
+[List Sessions](#list-sessions) accepts a `?tag=` query parameter to
+restrict results to sessions carrying that tag:
+
+```
+GET /api/v1/sessions?tag=region:jkt
+```
+
+Deleting a session also drops its tags from the in-memory registry and
+the JSON snapshot.
+
+---
+
+## Session Export / Import
+
+Move a session's local device identity and credentials between waxum
+instances — an explicit, operator-triggered migration. Added in
+v0.9.3.
+
+:::warning Not multi-instance failover
+`whatsapp-rust`'s storage is local-SQLite-only; it has no networked
+storage backend. Export/import is a manual, one-shot copy — not
+transparent failover or live replication between instances. WhatsApp
+also does not allow the same device credentials to be live on two
+places at once, so export always disconnects the source session first.
+:::
+
+### Export Session
+
+Packages the session's local storage directory (device identity,
+Signal protocol keys, noise handshake state — everything
+`whatsapp-rust` itself persists to disk) as a zip and streams it back.
+
+```
+POST /api/v1/sessions/{session_id}/export
+```
+
+Disconnects the session first — the underlying device credentials must
+never be live on two waxum instances simultaneously, so export always
+leaves the source session `disconnected` as a side effect, even if it
+was `logged_in` a moment earlier.
+
+#### Response
+
+`200` with `Content-Type: application/zip` and a
+`Content-Disposition: attachment; filename="{session_id}.waxum-session.zip"`
+header. The body is the zip archive — not JSON.
+
+### Import Session
+
+Restores a session's local storage directory from an export zip, e.g.
+after copying it to a different waxum instance.
+
+```
+POST /api/v1/sessions/{session_id}/import
+```
+
+The target session id must already exist (create it first if needed).
+Upload as `multipart/form-data` with the zip in a field named `file`:
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/import \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@my-session.waxum-session.zip"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Session storage imported — call /connect to bring it online"
+}
+```
+
+Notes:
+- Refuses to run (`409`) if the target session is currently connected
+  on this instance — disconnect it first, or import into a fresh
+  session id.
+- Does **not** auto-reconnect. Call
+  [Connect Session](#connect-session) afterwards to bring it online.
+- Zip entries are validated against path traversal ("zip-slip") before
+  extraction; unsafe entries abort the import with `400`.
+
+---
+
 ## Device Identity
 
 Controls how each session appears in WhatsApp's **Linked Devices** list at
