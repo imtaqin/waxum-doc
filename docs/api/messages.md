@@ -42,6 +42,14 @@ on the contact record. Subsequent sends become a single hop again on
 the waxum side too.
 :::
 
+::: warning This is send-side only
+This resolution runs when *you* send a message and only affects that
+API response's `to` field. It has no effect on inbound webhooks — a
+message received *from* a LID-only contact still carries `@lid` as
+the sender. See [`from_phone`](./webhooks.md#from-vs-from_phone-v097)
+in the webhook docs for the inbound equivalent.
+:::
+
 ## Send Text Message
 
 ```

@@ -208,6 +208,7 @@ All webhook payloads follow this format:
   "timestamp": 1767143203,
   "data": {
     "from": "628123456789@s.whatsapp.net",
+    "from_phone": "628123456789",
     "chat": "628123456789@s.whatsapp.net",
     "message_id": "3EB0ABC123...",
     "is_from_me": false,
@@ -223,6 +224,34 @@ All webhook payloads follow this format:
   }
 }
 ```
+
+#### `from` vs `from_phone` (v0.9.7+)
+
+`from` is the raw JID WhatsApp used to address the message, verbatim —
+for [LID-only contacts](./messages.md#lid-auto-resolve) that is a
+`12300954140784@lid` value, not a phone number, and no amount of
+waiting for a later webhook or saving the contact changes that; the
+[auto-resolve](./messages.md#lid-auto-resolve) behavior only applies
+to `/messages/*` sends, not to inbound webhooks.
+
+`from_phone` is waxum's best-effort resolution of that sender to a
+plain phone number (`"628123456789"`, no JID suffix), added
+specifically so consumers don't have to do this themselves:
+
+- If `from` is already a phone-number JID, `from_phone` is that same
+  number — no lookup needed.
+- If `from` is a `@lid`, waxum looks it up in the LID↔phone mapping
+  the WhatsApp client already learns passively (from `usync`, message
+  sender attributes, history sync, etc. — no extra network call on
+  waxum's side). This is usually already warm for contacts that have
+  messaged you before.
+- If the mapping isn't known yet, `from_phone` is `null`. This can
+  happen for a LID's very first message before WhatsApp has surfaced
+  the phone number through any of those passive channels.
+
+`from_phone: null` is a real "not known yet" outcome, not a bug —
+build fallback handling for it if your integration depends on the
+phone number.
 
 ### Location Message (v0.6.2+)
 
