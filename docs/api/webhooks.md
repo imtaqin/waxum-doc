@@ -330,21 +330,37 @@ streams as a series of `message` events with the same `message_id`.
 
 If you provide a `secret`, Waxum will sign the payload with HMAC-SHA256.
 
-The signature is sent in the `X-Webhook-Signature` header:
+Two headers are sent together:
 
 ```
+X-Webhook-Timestamp: 1767143203
 X-Webhook-Signature: sha256=abc123...
 ```
+
+**v0.9.8+:** the signature covers `{timestamp}.{raw body}` (joined with a
+literal `.`), not the raw body alone — a captured `(url, timestamp,
+signature, body)` tuple has a valid signature forever otherwise, since
+nothing about it changes on replay. Reject anything where
+`X-Webhook-Timestamp` is further than a few minutes from your own clock
+*before* checking the signature; that's what actually stops replay, the
+signature alone only proves the payload wasn't tampered with.
 
 ### Verification Example (Node.js)
 
 ```javascript
 const crypto = require('crypto');
 
-function verifySignature(payload, signature, secret) {
+const MAX_CLOCK_SKEW_SECONDS = 300; // 5 minutes
+
+function verifySignature(payload, timestamp, signature, secret) {
+  const skew = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(skew) || skew > MAX_CLOCK_SKEW_SECONDS) {
+    return false; // too old (or too far in the future) -- possible replay
+  }
+
   const expected = 'sha256=' + crypto
     .createHmac('sha256', secret)
-    .update(payload)
+    .update(`${timestamp}.${payload}`)
     .digest('hex');
 
   return crypto.timingSafeEqual(
@@ -355,10 +371,11 @@ function verifySignature(payload, signature, secret) {
 
 // Express middleware
 app.post('/webhook', (req, res) => {
+  const timestamp = req.headers['x-webhook-timestamp'];
   const signature = req.headers['x-webhook-signature'];
   const payload = JSON.stringify(req.body);
 
-  if (!verifySignature(payload, signature, 'your-secret')) {
+  if (!verifySignature(payload, timestamp, signature, 'your-secret')) {
     return res.status(401).send('Invalid signature');
   }
 
@@ -373,11 +390,21 @@ app.post('/webhook', (req, res) => {
 ```python
 import hmac
 import hashlib
+import time
 
-def verify_signature(payload, signature, secret):
+MAX_CLOCK_SKEW_SECONDS = 300  # 5 minutes
+
+def verify_signature(payload, timestamp, signature, secret):
+    try:
+        skew = abs(time.time() - int(timestamp))
+    except (TypeError, ValueError):
+        return False
+    if skew > MAX_CLOCK_SKEW_SECONDS:
+        return False  # too old (or too far in the future) -- possible replay
+
     expected = 'sha256=' + hmac.new(
         secret.encode(),
-        payload.encode(),
+        f'{timestamp}.{payload}'.encode(),
         hashlib.sha256
     ).hexdigest()
 
