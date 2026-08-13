@@ -61,9 +61,18 @@ POST /api/v1/sessions/{session_id}/messages/text
 ```json
 {
   "to": "628123456789",
-  "text": "Hello from Waxum!"
+  "text": "Hello from Waxum!",
+  "mentions": ["628987654321"],
+  "mention_all": false
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `text` | string | Yes | Message text |
+| `mentions` | array | No | JIDs to @mention (v0.12.0+). Each entry may be a full JID or a bare phone number. Any mention whose `@user` form is missing from `text` is appended so clients render the mention highlight |
+| `mention_all` | boolean | No | Group chats only (v0.12.0+) — mention every participant. Participant JIDs are fetched live from group metadata and attached silently (no `@user` text is appended). Returns `400` for non-group recipients |
 
 ### Response
 
@@ -1429,6 +1438,68 @@ POST /api/v1/sessions/{session_id}/messages/newsletter-forward
 | `server_message_id` | number | Yes | Server message ID from newsletter |
 | `newsletter_name` | string | No | Newsletter name |
 | `content_type` | string | No | `update`, `update_card`, `link_card` |
+
+---
+
+## List Session Messages (history)
+
+Session-wide message history in store-arrival order, newest first, with
+keyset cursor pagination. Backed by the upstream chat store rather than
+the search index — unlike [Search Session Messages](./search.md) it
+needs no full-text query and returns everything, including content-free
+message types.
+
+```
+GET /api/v1/sessions/{session_id}/messages?after=<seq>&limit=<n>
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `after` | integer | No | Keyset cursor: the `seq` of the last message on the previous page, taken verbatim from `next_cursor`. Omit for the newest page |
+| `limit` | integer | No | Page size. Default `20`, max `200` |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": 421,
+      "message_id": "3EB0C8F1A2B3C4D5E6",
+      "session_id": "main",
+      "chat_jid": "628123456789@s.whatsapp.net",
+      "sender_jid": "628123456789@s.whatsapp.net",
+      "direction": "in",
+      "msg_type": "text",
+      "body": "are we still on for lunch tomorrow?",
+      "snippet": null,
+      "msg_timestamp": "2026-07-21 10:30:00",
+      "push_name": "Jane Doe",
+      "media": null
+    }
+  ],
+  "count": 20,
+  "next_cursor": 402
+}
+```
+
+`next_cursor` is `null` on a short page, which means the end of the
+stored history. Each message also carries `push_name` (sender display
+name) and, for media types, a `media` download pointer you can pass
+straight to [Download Media](./media.md). Message fields otherwise
+match the [search response](./search.md#response-fields).
+
+:::note Cursor is not durable
+The `seq` cursor is assigned by the in-process chat store and is **not
+stable across restarts** — after a gateway restart, discard any saved
+cursor and page from the top again.
+:::
+
+For a single chat's history instead of the whole session, use the
+chat-scoped sibling `GET /api/v1/sessions/{session_id}/messages/chat/{chat_jid}`
+(`limit`/`offset` pagination, same message shape).
 
 ---
 

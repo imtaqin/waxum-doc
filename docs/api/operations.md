@@ -4,7 +4,8 @@ sidebar_position: 10
 
 # Operations
 
-Spam reporting, trust contact token management, auto-reconnect, and history sync configuration.
+Spam reporting, trust contact token management, auto-reconnect, history
+sync configuration, on-demand pause/resume, and app-state resync.
 
 ## Spam Report
 
@@ -216,6 +217,15 @@ Get the current auto-reconnect configuration.
 GET /api/v1/sessions/{session_id}/reconnect
 ```
 
+:::note Works while the socket is down (v0.12.0+)
+This endpoint (and its `PUT` sibling, and the two
+[history-sync](#history-sync---get) endpoints) is served from stored
+config, so it answers even when the session's socket is down —
+disabling auto-reconnect on a dead session is exactly the case that
+needs it. An unknown session ID returns `404`; config access no longer
+returns `503`.
+:::
+
 ### Response
 
 ```json
@@ -330,4 +340,102 @@ curl -X PUT http://localhost:3451/api/v1/sessions/my-session/history-sync \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"skip": true}'
+```
+
+---
+
+## Pause Session
+
+Take a session offline on demand, without deleting or fully
+disconnecting it. The session stays paused (deliberately offline) until
+resumed — the [session status](./sessions.md#get-session-status)
+reports `paused: true` while paused.
+
+```
+POST /api/v1/sessions/{session_id}/pause
+```
+
+### Response
+
+```json
+{
+  "paused": true
+}
+```
+
+---
+
+## Resume Session
+
+Bring a paused session back online.
+
+```
+POST /api/v1/sessions/{session_id}/resume
+```
+
+### Response
+
+```json
+{
+  "paused": false
+}
+```
+
+---
+
+## App-State Resync
+
+Force a re-fetch of one or more app-state collections (block lists,
+chat mute/pin state, etc.) from the WhatsApp server.
+
+```
+POST /api/v1/sessions/{session_id}/appstate/resync
+```
+
+### Request Body
+
+```json
+{
+  "collections": ["critical_block", "regular_low"],
+  "mode": "incremental"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `collections` | array | Yes | Collections to re-fetch: `critical_block`, `critical_unblock_low`, `regular_low`, `regular_high`, `regular`. Must not be empty — an unknown name returns `400` |
+| `mode` | string | No | `incremental` (default) asks for patches after the stored version; `snapshot` discards the stored state and rebuilds the collection from the server's snapshot |
+
+### Response
+
+```json
+{
+  "synced": ["critical_block"],
+  "fatal": [],
+  "retryable": ["regular_low"],
+  "skipped": [],
+  "all_synced": false
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `synced` | Fetched, applied and persisted |
+| `fatal` | Refused by the server outright (400/404); retrying will not clear these |
+| `retryable` | Not synced, but a later attempt can succeed |
+| `skipped` | Left to another sync already fetching the collection |
+| `all_synced` | `true` when every requested collection came back synced |
+
+Returns `400` for an invalid body and `503` when the session has no
+live client.
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/appstate/resync \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collections": ["critical_block", "critical_unblock_low"]
+  }'
 ```

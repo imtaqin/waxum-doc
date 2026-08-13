@@ -36,6 +36,7 @@ POST /api/v1/sessions
 |-------|------|----------|-------------|
 | `id` | string | No | Custom session ID (auto-generated if not provided) |
 | `name` | string | No | Friendly name for the session |
+| `reuse` | boolean | No | Re-scan an existing session ID instead of failing — see below |
 | `webhook` | object | No | Webhook configuration |
 | `webhook.url` | string | Yes* | Webhook URL |
 | `webhook.events` | array | No | Events to subscribe (default: all) |
@@ -44,6 +45,15 @@ POST /api/v1/sessions
 | `device.os` | string | No | OS label shown in WhatsApp Linked Devices, e.g. `Windows`, `Mac OS X`, `Ubuntu` |
 | `device.platform` | string | No | Platform type — see table in [Device Identity](#device-identity) |
 | `device.version` | string | No | Dotted app version, e.g. `2.3000.1023902713`. Omit to use library default |
+
+### Reusing an existing session ID (`reuse`, v0.12.0+)
+
+By default, creating a session with an ID that already exists returns
+`409`. Pass `"reuse": true` to instead keep the original `session_id`
+and re-start the connect flow (QR/pair re-scan) on the same slot —
+the response is `200` with the existing session. `name` and `webhook`
+fields are ignored on reuse; update those via their own endpoints.
+`reuse` has no effect when the ID does not exist yet.
 
 ### Response
 
@@ -177,10 +187,17 @@ GET /api/v1/sessions/{session_id}/status
 {
   "status": "logged_in",
   "is_logged_in": true,
+  "socket_alive": true,
+  "paused": false,
   "phone_number": "628123456789",
   "push_name": "John Doe"
 }
 ```
+
+| Field | Description |
+|-------|-------------|
+| `socket_alive` | Raw socket liveness (v0.12.0+). Distinct from `is_logged_in`: a cached `logged_in` status can outlive a dead socket ("limbo"), and a live socket can precede login during QR/pair flows. |
+| `paused` | `true` after [Pause Session](./operations.md#pause-session) — the session is deliberately offline until resumed. |
 
 ### Status Values
 
@@ -241,6 +258,13 @@ whatsapp-rust persisted at pair time.
 
 Empty body is fine — falls back to environment defaults (`WA_DEVICE_OS`,
 `WA_DEVICE_PLATFORM`, `WA_DEVICE_VERSION`).
+
+:::tip Lifts an account-lock cooldown
+When WhatsApp locks an account, auto-reconnect pauses with an escalating
+cooldown (see the [`account_locked`](./webhooks.md#account-locked-event)
+webhook event). A manual `POST /connect` is the intended way out — it
+clears the cooldown and reconnects immediately.
+:::
 
 ---
 
