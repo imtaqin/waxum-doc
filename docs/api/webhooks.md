@@ -130,6 +130,75 @@ Both are cleared by `POST /webhooks/{id}/enable`.
 
 ---
 
+## Retries & Dead-letter Queue
+
+A delivery that gets a non-2xx response (or a transport error) is
+retried with exponential backoff in a background task — the event
+pipeline never blocks on a slow or dead target. The retry policy is
+configurable via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBHOOK_RETRY_MAX_ATTEMPTS` | `3` | Total delivery attempts per event before dead-lettering. Backoff: immediate, +5 s, +30 s, then doubling (60 s, 120 s, …) capped at 5 min |
+| `WEBHOOK_RETRY_ON_4XX` | `true` | Also retry 4xx responses. A 401/403 window is usually a fixable consumer-side misconfig, and dropping those events loses messages. Set to `false` to restore the old "4xx is permanent" behavior (408/429 are retried either way) |
+| `WEBHOOK_DLQ_CAPACITY` | `100` | Per-session in-memory DLQ ring size; oldest entries are evicted past the cap |
+
+Deliveries that exhaust every attempt land in a per-session
+**dead-letter queue**. Each entry keeps everything needed to replay:
+session id, webhook URL, event name, the verbatim payload, failure
+reason, attempt count and timestamp.
+
+> The in-memory DLQ is **lost on restart**. Failures are also recorded
+> in the DB `webhook_dlq` table, which is the durable record.
+
+### List DLQ Entries
+
+```
+GET /api/v1/sessions/{session_id}/webhooks/dlq
+```
+
+Newest first.
+
+```json
+{
+  "entries": [
+    {
+      "id": "dlq-entry-uuid",
+      "session_id": "my-session",
+      "webhook_url": "https://example.com/webhook",
+      "event": "message",
+      "payload": "{\"session_id\":\"my-session\",\"event\":\"message\",...}",
+      "last_error": "HTTP 401 Unauthorized",
+      "attempts": 3,
+      "failed_at": 1767143203
+    }
+  ],
+  "count": 1
+}
+```
+
+### Replay a DLQ Entry
+
+```
+POST /api/v1/sessions/{session_id}/webhooks/dlq/{entry_id}/replay
+```
+
+Re-delivers the stored payload verbatim through the same signing and
+retry path as a fresh event (including the HMAC secret captured at
+failure time, so the signature scheme is identical). The entry is
+removed up front; if the re-delivery also exhausts its retries it lands
+back in the DLQ as a new entry. Returns `400` if the URL's circuit
+breaker is currently OPEN — the entry stays queued in that case.
+
+```json
+{
+  "success": true,
+  "message": "Webhook DLQ entry replay scheduled"
+}
+```
+
+---
+
 ## Event Types
 
 ### Core Events
@@ -181,6 +250,10 @@ Both are cleared by `POST /webhooks/{id}/enable`.
 | `client_outdated` | Client version is outdated |
 | `offline_sync_preview` | Preview of offline messages available |
 | `offline_sync_completed` | Offline message sync completed |
+| `account_locked` | WhatsApp locked the account; auto-reconnect paused (v0.12.0+) |
+| `call_log_sync` | Call-log app-state mutation received |
+| `stream_error` | Stream-level error from WhatsApp (e.g. `429` rate limit) |
+| `enc_decrypt_failed` | A message failed to decrypt; carries which message and why |
 
 ---
 
@@ -199,6 +272,12 @@ All webhook payloads follow this format:
 }
 ```
 
+Message-event envelopes carry one extra top-level field (v0.12.0+):
+
+| Field | Description |
+|-------|-------------|
+| `offline` | `true` when the message was redelivered from the disconnect window (received while the session was offline, replayed on reconnect); `false` for live arrivals |
+
 ### Message Event
 
 ```json
@@ -206,6 +285,7 @@ All webhook payloads follow this format:
   "session_id": "my-session",
   "event": "message",
   "timestamp": 1767143203,
+  "offline": false,
   "data": {
     "from": "628123456789@s.whatsapp.net",
     "from_phone": "628123456789",
@@ -324,26 +404,141 @@ streams as a series of `message` events with the same `message_id`.
 }
 ```
 
+### Account Locked Event
+
+Emitted when WhatsApp locks the account (v0.12.0+). Auto-reconnect is
+paused with an escalating cooldown — repeated locks inside the same
+process lifetime walk the schedule, and the last step repeats once the
+list is exhausted. A manual
+[`POST /sessions/{id}/connect`](./sessions.md#connect-session) lifts the
+cooldown and reconnects immediately.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "account_locked",
+  "timestamp": 1767143203,
+  "data": {
+    "reason": "AccountLocked",
+    "cooldown_secs": 300,
+    "cooldown_until": 1767143503
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `reason` | Lock reason from WhatsApp |
+| `cooldown_secs` | Cooldown applied for this lock, in seconds |
+| `cooldown_until` | Unix timestamp when the cooldown ends |
+
+The cooldown schedule is configurable via the `ACCOUNT_LOCK_BACKOFF_SECS`
+environment variable — a comma-separated list of seconds, default
+`300,900,3600` (5 min → 15 min → 60 min).
+
+### Call Log Sync Event
+
+Emitted when a call-log app-state mutation arrives.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "call_log_sync",
+  "timestamp": 1767143203,
+  "data": {
+    "call_creator_jid": "628123456789@s.whatsapp.net",
+    "call_id": "ABCD1234...",
+    "from_me": false,
+    "timestamp": 1767143100,
+    "from_full_sync": false,
+    "record": "CallLogRecord { ... }"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `call_creator_jid` | JID that initiated the call |
+| `call_id` | WhatsApp call ID |
+| `from_me` | `true` when the call was placed by this account |
+| `timestamp` | Unix timestamp of the call-log record |
+| `from_full_sync` | `true` when the record arrived via a full (snapshot) app-state sync |
+| `record` | Debug representation of the full call-log record |
+
+### Stream Error Event
+
+Emitted on stream-level errors from WhatsApp — e.g. a `429` rate-limit
+rejection.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "stream_error",
+  "timestamp": 1767143203,
+  "data": {
+    "code": "429"
+  }
+}
+```
+
+### Enc Decrypt Failed Event
+
+Emitted when a specific message fails to decrypt, with which message
+and why.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "enc_decrypt_failed",
+  "timestamp": 1767143203,
+  "data": {
+    "chat": "628123456789@s.whatsapp.net",
+    "sender": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123...",
+    "enc_index": 0,
+    "enc_type": "skmsg",
+    "reason": "NoSession"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `chat` | Chat JID the failed message belongs to |
+| `sender` | Sender JID |
+| `message_id` | WhatsApp message ID that failed to decrypt |
+| `enc_index` | Index of the failing encryption layer |
+| `enc_type` | Encryption type of the failing payload (e.g. `skmsg`) |
+| `reason` | Failure reason (e.g. `NoSession`) |
+
 ---
 
 ## Signature Verification
 
 If you provide a `secret`, Waxum will sign the payload with HMAC-SHA256.
 
-Two headers are sent together:
+Three headers are sent together:
 
 ```
 X-Webhook-Timestamp: 1767143203
 X-Webhook-Signature: sha256=abc123...
+X-Webhook-Signature-Version: v2
 ```
 
-**v0.9.8+:** the signature covers `{timestamp}.{raw body}` (joined with a
-literal `.`), not the raw body alone — a captured `(url, timestamp,
-signature, body)` tuple has a valid signature forever otherwise, since
-nothing about it changes on replay. Reject anything where
+**Signature scheme `v2` (v0.9.8+):** the signature covers
+`{timestamp}.{raw body}` (the `X-Webhook-Timestamp` value and the raw
+request body joined with a literal `.`), not the raw body alone — a
+captured `(url, timestamp, signature, body)` tuple has a valid signature
+forever otherwise, since nothing about it changes on replay. The HMAC-SHA256
+digest is hex-encoded and prefixed with `sha256=`. Reject anything where
 `X-Webhook-Timestamp` is further than a few minutes from your own clock
 *before* checking the signature; that's what actually stops replay, the
 signature alone only proves the payload wasn't tampered with.
+
+`X-Webhook-Signature-Version` tells you which scheme produced the
+signature: `v2` is the timestamp-prefixed scheme above. Deliveries from
+waxum < v0.9.8 signed the raw body alone and carried no version header —
+if you support both, treat a missing header as the legacy `v1` scheme.
 
 ### Verification Example (Node.js)
 
