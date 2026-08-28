@@ -311,15 +311,17 @@ POSTGRES_DB=waxum
 | `PORT` | `3451` | Server port |
 | `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
 | `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
-| `RATE_LIMIT_PER_SECOND` | `60` | Per-peer-IP requests/sec allowed on the whole API |
-| `RATE_LIMIT_BURST` | `150` | Burst capacity on top of the sustained rate |
+| `RATE_LIMIT_ENABLED` | `false` | Turn on the per-peer-IP rate limiter |
+| `RATE_LIMIT_PER_SECOND` | `60` | Per-peer-IP requests/sec allowed on the whole API (only if enabled) |
+| `RATE_LIMIT_BURST` | `150` | Burst capacity on top of the sustained rate (only if enabled) |
 
 :::info Behind a reverse proxy
-The rate limiter keys on the TCP peer address, so every client behind
-an unconfigured reverse proxy (Traefik, Dokploy, nginx, Docker's own
-port mapping) shares one quota. If you're hitting `Too Many Requests`
-from normal dashboard usage, raise `RATE_LIMIT_PER_SECOND`/
-`RATE_LIMIT_BURST` rather than assuming it's a bug.
+Off by default. The rate limiter keys on the TCP peer address, so
+every client behind an unconfigured reverse proxy (Traefik, Dokploy,
+nginx, Docker's own port mapping) would share one quota if enabled —
+set `RATE_LIMIT_ENABLED=true` only if you actually want that, and
+raise `RATE_LIMIT_PER_SECOND`/`RATE_LIMIT_BURST` if the defaults are
+too tight for your traffic.
 :::
 
 ### NATS JetStream (Optional)
