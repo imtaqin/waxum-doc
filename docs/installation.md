@@ -6,6 +6,17 @@ sidebar_position: 2
 
 ## Quick Start
 
+### Linux (curl one-liner)
+
+```bash
+VER=$(curl -fsSL https://api.github.com/repos/imtaqin/waxum/releases/latest | grep -Po '"tag_name": "\K[^"]*')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fsSL "https://github.com/imtaqin/waxum/releases/download/${VER}/waxum-${VER#v}-linux-${ARCH}.tar.gz" | tar xz
+./waxum --token mysecrettoken
+```
+
+### Manual download
+
 Download the binary for your platform from [GitHub Releases](https://github.com/imtaqin/waxum/releases) and run:
 
 ```bash
@@ -25,7 +36,36 @@ Scale-out or need Postgres / MySQL? Pass a `DATABASE_URL`:
 
 Schema migrations run automatically at startup on every backend.
 
-## Docker Compose
+## Docker Compose (no clone needed)
+
+Paste this straight into a `docker-compose.yml` — no git clone required:
+
+```yaml
+services:
+  waxum:
+    image: fdciabdul/waxum:latest
+    restart: unless-stopped
+    ports:
+      - "3451:3451"
+    volumes:
+      - waxum_data:/app/whatsapp_sessions
+    environment:
+      SUPERADMIN_TOKEN: change-me-to-a-real-secret
+      WHATSAPP_STORAGE_PATH: /app/whatsapp_sessions
+
+volumes:
+  waxum_data:
+```
+
+```bash
+docker compose up -d
+```
+
+SQLite, zero extra config — everything persists in the `waxum_data`
+volume. Want Postgres/MySQL, NATS, or a pinned version instead of
+`latest`? See the full setup below.
+
+## Docker Compose (full setup: NATS + pinned versions + Postgres/MySQL)
 
 ```bash
 git clone https://github.com/imtaqin/waxum.git
