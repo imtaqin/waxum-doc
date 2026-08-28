@@ -54,13 +54,38 @@ Then run:
 docker compose up -d
 ```
 
-This starts **NATS** (message queue) and the **Waxum API**. To also run a bundled PostgreSQL:
+This starts **NATS** (message queue) and the **Waxum API**. By default the
+`api` service pulls the prebuilt image from Docker Hub
+(`fdciabdul/waxum:latest`) — no local compile step, no Rust toolchain
+needed. To pin a specific release instead of always tracking `latest`,
+set `WAXUM_TAG` in `.env`:
+
+```bash
+WAXUM_TAG=0.12.2
+```
+
+(matches the version on [GitHub Releases](https://github.com/imtaqin/waxum/releases)).
+
+To build the image from source instead of pulling it, layer
+`docker-compose.build.yml` on top:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+To also run a bundled PostgreSQL:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
 ```
 
 To run **without NATS**, remove or comment out the `NATS_URL` line in `.env`.
+
+Update to the latest image later with:
+
+```bash
+docker compose pull && docker compose up -d
+```
 
 ## Build from Source
 
@@ -246,6 +271,16 @@ POSTGRES_DB=waxum
 | `PORT` | `3451` | Server port |
 | `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
 | `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
+| `RATE_LIMIT_PER_SECOND` | `60` | Per-peer-IP requests/sec allowed on the whole API |
+| `RATE_LIMIT_BURST` | `150` | Burst capacity on top of the sustained rate |
+
+:::info Behind a reverse proxy
+The rate limiter keys on the TCP peer address, so every client behind
+an unconfigured reverse proxy (Traefik, Dokploy, nginx, Docker's own
+port mapping) shares one quota. If you're hitting `Too Many Requests`
+from normal dashboard usage, raise `RATE_LIMIT_PER_SECOND`/
+`RATE_LIMIT_BURST` rather than assuming it's a bug.
+:::
 
 ### NATS JetStream (Optional)
 
