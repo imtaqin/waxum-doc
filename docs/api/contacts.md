@@ -192,6 +192,51 @@ POST /api/v1/sessions/{session_id}/contacts/users
 
 ---
 
+## Save Contact
+
+Save or rename a contact in the session's address book. The name is synced to the
+account's other linked devices, which lets integrations (for example Chatwoot) push
+a contact name back to the WhatsApp client.
+
+```
+PUT /api/v1/sessions/{session_id}/contacts/{jid}
+```
+
+### Request Body
+
+```json
+{
+  "full_name": "Jane Doe",
+  "first_name": "Jane",
+  "save_on_primary_addressbook": true
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `full_name` | string | Display name saved for the contact. |
+| `first_name` | string | Short name. Omitted from the mutation when absent. |
+| `save_on_primary_addressbook` | boolean | Also save to the phone's address book. Default `false`. |
+
+At least one of `full_name` or `first_name` is required.
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+### Errors
+
+| Status | Cause |
+|--------|-------|
+| `400` | Neither name provided, or `jid` is not a bare phone-number JID. LIDs, groups and device-specific JIDs are rejected. |
+| `503` | Session is not connected. |
+
+---
+
 ## JID Format
 
 WhatsApp uses JID (Jabber ID) format for identifiers:
