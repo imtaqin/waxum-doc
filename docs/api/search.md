@@ -110,6 +110,10 @@ Same shape as [Search Session Messages](#search-session-messages).
 | `body` | string \| null | Message body, or caption for media. Null for content-free types |
 | `snippet` | string \| null | Highlighted match context — see below |
 | `msg_timestamp` | string | `%Y-%m-%d %H:%M:%S` UTC text |
+| `push_name` | string \| null | Sender's WhatsApp display name. Only populated by the chat-scoped listing (`GET /messages/chat/{chat_jid}`, see [Messages](./messages.md#list-chat-messages)) — always `null` from either search endpoint here |
+| `media` | object \| null | Download pointer for media messages, passable straight to [Download Media](./media.md). Only populated by the chat-scoped listing — always `null` from either search endpoint here |
+| `quoted_message_id` | string \| null | WhatsApp message id this message is replying to (`ContextInfo.stanzaId`). `null` when the message is not a reply. Only populated by the chat-scoped listing — always `null` from either search endpoint here |
+| `quoted_sender_jid` | string \| null | Sender of the quoted message (`ContextInfo.participant`). `null` when not a reply, or when WhatsApp omitted the field. Only populated by the chat-scoped listing — always `null` from either search endpoint here |
 
 ## Backend degrade ladder
 
