@@ -18,7 +18,7 @@ const config: Config = {
   url: 'https://waxum.imtaqin.id',
   baseUrl: '/',
 
-  organizationName: 'fdciabdul',
+  organizationName: 'imtaqin',
   projectName: 'waxum-doc',
 
   onBrokenLinks: 'throw',
