@@ -1,8 +1,8 @@
-# wa-rs
+# waxum
 
 > REST API gateway for WhatsApp. Multi-session, webhook-driven, backed by a Rust/Tokio runtime on top of the whatsapp-rust multi-device client.
 
-wa-rs exposes WhatsApp's messaging, group, presence, and call signalling
+waxum exposes WhatsApp's messaging, group, presence, and call signalling
 over an HTTP+JSON API. Sessions are QR- or phone-code paired, isolated
 per storage directory, and persisted to Postgres, MySQL, or SQLite. All
 inbound WA events fan out to registered webhooks (HMAC-SHA256 signed).
@@ -11,37 +11,45 @@ Auth is Bearer JWT. Base URL `/api/v1`. Swagger UI at `/swagger-ui`.
 
 ## Getting started
 
-- [Introduction](https://wa-rs.imtaqin.id/docs/intro): what wa-rs is, what it is not.
-- [Installation](https://wa-rs.imtaqin.id/docs/installation): binary release, docker, source build (Linux/macOS/Windows GNU toolchain).
-- [Getting started](https://wa-rs.imtaqin.id/docs/getting-started): first session, pair, first message.
-- [Authentication](https://wa-rs.imtaqin.id/docs/authentication): JWT bearer, superadmin token, per-session scopes.
-- [Dashboard](https://wa-rs.imtaqin.id/docs/dashboard): the bundled UI at `/`.
+- [Introduction](https://waxum.imtaqin.id/docs/intro): what waxum is, what it is not.
+- [Installation](https://waxum.imtaqin.id/docs/installation): binary release, docker, source build (Linux/macOS/Windows GNU toolchain).
+- [Getting started](https://waxum.imtaqin.id/docs/getting-started): first session, pair, first message.
+- [Authentication](https://waxum.imtaqin.id/docs/authentication): JWT bearer, superadmin token, per-session scopes.
+- [Dashboard](https://waxum.imtaqin.id/docs/dashboard): the bundled UI at `/`.
 
 ## API reference
 
-- [Sessions](https://wa-rs.imtaqin.id/docs/api/sessions): create, list, get, delete (cascade), pair (QR + phone code), connect, disconnect, status, device info.
-- [Messages](https://wa-rs.imtaqin.id/docs/api/messages): text, image, video, audio, document, sticker, location, contact, poll, buttons, list, interactive/native-flow, reactions, edit, revoke, view-once, forward, star, pin.
-- [Groups](https://wa-rs.imtaqin.id/docs/api/groups): create, info, participants, admins, settings (announce/locked/ephemeral), invite links, join/leave.
-- [Contacts](https://wa-rs.imtaqin.id/docs/api/contacts): `is_on_whatsapp` bulk check, get profile, get picture, get status, block/unblock, list cached directory.
-- [Presence](https://wa-rs.imtaqin.id/docs/api/presence): subscribe, send composing/paused/recording.
-- [Media](https://wa-rs.imtaqin.id/docs/api/media): upload from URL or multipart, download by media_key.
-- [Calls](https://wa-rs.imtaqin.id/docs/api/calls): ring (audio/video kind), reject, accept, terminate. Signalling only — no media plane.
-- [Webhooks](https://wa-rs.imtaqin.id/docs/api/webhooks): register, list, delete, re-enable, HMAC signature, retries, circuit breaker + auto-disable after 100 consecutive failures.
-- [Health](https://wa-rs.imtaqin.id/docs/api/health): `/livez` (static), `/readyz` (DB probe + session count), `/health` (legacy alias), `/metrics` (Prometheus).
-- [Privacy](https://wa-rs.imtaqin.id/docs/api/privacy): read receipts, last seen, online, profile visibility, groups add.
-- [Mex](https://wa-rs.imtaqin.id/docs/api/mex): raw MEX GraphQL passthrough.
-- [Operations](https://wa-rs.imtaqin.id/docs/api/operations): admin — session runtime introspection, force reconnect, purge storage.
-- [NATS](https://wa-rs.imtaqin.id/docs/api/nats): optional JetStream fan-out of every session event to a stream, one subject per event kind.
+- [Sessions](https://waxum.imtaqin.id/docs/api/sessions): create, list, get, delete (cascade), pair (QR + phone code), connect, disconnect, status, device info.
+- [Messages](https://waxum.imtaqin.id/docs/api/messages): text, image, video, audio, document, sticker, location, contact, poll, buttons, list, interactive/native-flow, reactions, edit, revoke, view-once, forward, star, pin.
+- [Groups](https://waxum.imtaqin.id/docs/api/groups): create, info, participants, admins, settings (announce/locked/ephemeral), invite links, join/leave.
+- [Contacts](https://waxum.imtaqin.id/docs/api/contacts): `is_on_whatsapp` bulk check, get profile, get picture, get status, block/unblock, list cached directory, resolve LID ↔ phone number, save/rename a contact.
+- [Presence](https://waxum.imtaqin.id/docs/api/presence): subscribe, send composing/paused/recording.
+- [Media](https://waxum.imtaqin.id/docs/api/media): upload from URL or multipart, download by media_key.
+- [Calls](https://waxum.imtaqin.id/docs/api/calls): ring (audio/video kind), reject, accept, terminate. Signalling only — no media plane.
+- [Webhooks](https://waxum.imtaqin.id/docs/api/webhooks): register, list, delete, re-enable, HMAC signature, retries, circuit breaker + auto-disable after 100 consecutive failures; message events carry both `from`/`from_phone` and `chat`/`chat_phone` so an outbound send's recipient resolves to a plain phone number too.
+- [Health](https://waxum.imtaqin.id/docs/api/health): `/livez` (static), `/readyz` (DB probe + session count), `/health` (legacy alias), `/metrics` (Prometheus).
+- [Privacy](https://waxum.imtaqin.id/docs/api/privacy): read receipts, last seen, online, profile visibility, groups add.
+- [Mex](https://waxum.imtaqin.id/docs/api/mex): raw MEX GraphQL passthrough.
+- [Operations](https://waxum.imtaqin.id/docs/api/operations): admin — session runtime introspection, force reconnect, purge storage.
+- [NATS](https://waxum.imtaqin.id/docs/api/nats): optional JetStream fan-out of every session event to a stream, one subject per event kind.
+- [Business](https://waxum.imtaqin.id/docs/api/business): catalog, collections, orders, profile update, remove cover photo.
+- [Bots](https://waxum.imtaqin.id/docs/api/bots): list bots in a session, sending-capping status.
+- [Labels & Quick Replies](https://waxum.imtaqin.id/docs/api/labels): create/delete labels, label chats and messages, upsert/delete quick replies, link-previews setting.
+- [Newsletter](https://waxum.imtaqin.id/docs/api/newsletter): list subscribed, metadata, create, join/leave, delete, change owner/demote admin, admin info, followers, mute.
+- [Scheduled Send](https://waxum.imtaqin.id/docs/api/scheduled): park a message now, dispatch it later.
+- [Blast](https://waxum.imtaqin.id/docs/api/blast): fan one payload out to many recipients with pacing, dedup, retry, and a dead-letter queue.
+- [Message Search](https://waxum.imtaqin.id/docs/api/search): full-text search over stored message history, per-session and fleet-wide.
+- [Tokens](https://waxum.imtaqin.id/docs/api/tokens): mint, list, and revoke bearer tokens scoped to a specific set of sessions.
 
 ## Runtime
 
 - Multi-DB backend: Postgres (deadpool), MySQL (mysql_async), SQLite (default, zero-config).
-- Multi-device WhatsApp client via `whatsapp-rust` v0.6+.
+- Multi-device WhatsApp client via `whatsapp-rust`.
 - Prometheus metrics on `/metrics`.
 - Circuit breaker per webhook URL: OPEN at 25 consecutive failures (5 min cooldown), hard-disable at 100 failures (persists `disabled_at`, `disabled_reason`).
 - Windows binaries built with `x86_64-pc-windows-gnu` (statically linked MinGW runtime — no VCRUNTIME140 dependency).
 
 ## Source
 
-- GitHub: https://github.com/fdciabdul/wa-rs
-- Docs source: https://github.com/fdciabdul/wa-rs-doc
+- GitHub: https://github.com/imtaqin/waxum
+- Docs source: https://github.com/imtaqin/waxum-doc

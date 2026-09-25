@@ -1,37 +1,824 @@
-# wa-rs — full docs
-
-> Concatenated markdown of all documentation pages. Source: https://doc.wars.imtaqin.id
-
+# waxum — full docs
+> Concatenated markdown of all documentation pages. Source: https://waxum.imtaqin.id
 
 ---
 
 # Source: /docs/intro.md
 
+# Introduction
+
+Waxum is a high-performance WhatsApp REST API Gateway built with Rust. It provides a simple and secure way to integrate WhatsApp messaging capabilities into your applications.
+
+## Features
+
+### Core Features
+- **Multi-Session Support** - Manage multiple WhatsApp sessions simultaneously
+- **QR Code & Pair Code Authentication** - Connect via QR code scanning or 8-digit pair code
+- **Webhook Events** - Receive real-time notifications with HMAC-SHA256 signature verification
+- **NATS JetStream** - Optional durable event streaming and queue-based outbound messaging
+- **RESTful API** - Simple JSON-based API with OpenAPI/Swagger documentation
+- **JWT Authentication** - Secure API access with token-based authentication
+- **Multi-Database Support** - PostgreSQL and MySQL supported for metadata storage
+- **Docker Ready** - Easy deployment with Docker and Docker Compose
+
+### Messaging Capabilities
+- **Text Messages** - Send plain text messages
+- **Media Messages** - Send images, videos, audio, documents, and stickers
+- **Location Sharing** - Share geographical locations
+- **Contact Sharing** - Share contact cards (vCards)
+- **Message Reactions** - Add emoji reactions to messages
+- **Message Editing** - Edit sent messages
+- **Voice Notes** - Send push-to-talk audio messages
+- **Polls** - Create polls with multiple options
+- **Buttons & Lists** - Send interactive button and list messages
+- **Interactive Messages** - Native flow interactive messages
+- **Newsletter Invites** - Send admin and follower newsletter invitations
+- **Business Messages** - Orders, invoices, and payment invitations
+- **Pin Messages** - Pin and unpin messages in chats
+- **Forward Messages** - Forward messages between chats
+- **Scheduled Calls** - Schedule voice/video calls in groups
+- **Payment Messages** - Send, request, cancel, and decline payments
+- **Comment Messages** - Comment on messages in groups
+
+### Contact & Group Management
+- **Contact Lookup** - Check WhatsApp registration, get profiles and user info
+- **Group Management** - Create groups, manage participants, admins, and settings
+- **Privacy Settings** - View privacy configuration
+- **Blocking** - Block and unblock contacts
+- **Presence** - Set online status and subscribe to presence updates
+- **Chat State** - Send typing and recording indicators
+
+### Advanced Features
+- **GraphQL/MEX Operations** - Execute WhatsApp internal GraphQL queries and mutations
+- **Spam Reporting** - Report spam messages
+- **TCToken Management** - Issue, query, and prune trust contact tokens
+- **Auto-Reconnect** - Configure automatic reconnection on disconnect
+- **History Sync** - Control message history synchronization
+- **Media Upload/Download** - Upload and download encrypted media files
+
+### Developer Experience
+- **Swagger UI** - Interactive API documentation at `/swagger-ui`
+- **Health Checks** - Built-in health endpoint for monitoring
+- **Structured Logging** - JSON-formatted logs with tracing
+- **Environment Configuration** - Configure via `.env` or environment variables
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        Waxum Gateway                          │
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────────┐  ┌───────────────┐   │
+│  │   REST API   │  │     Webhook      │  │     NATS      │   │
+│  │   (Axum)     │  │   Dispatcher     │  │   JetStream   │   │
+│  └──────────────┘  └──────────────────┘  └───────────────┘   │
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │              Session Manager (Multi-Device)              ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │ PostgreSQL /   │  │  SQLite (WA)    │  │    NATS      │  │
+│  │ MySQL (Meta)   │  │  (Sessions)     │  │  (Streams)   │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language | Rust |
+| Web Framework | Axum 0.8 |
+| Database | PostgreSQL or MySQL (metadata) + SQLite (WA sessions) |
+| Message Queue | NATS JetStream (optional) |
+| Authentication | JWT (jsonwebtoken) |
+| WhatsApp Protocol | wacore (custom) |
+| Documentation | Swagger/OpenAPI |
+
+## Quick Links
+
+- [Getting Started](./getting-started) - Quick start guide
+- [Installation](./installation) - Detailed installation instructions
+- [Authentication](./authentication) - JWT authentication guide
+- [API Reference](./api/sessions) - Complete API documentation
+- [Webhooks](./api/webhooks) - Setting up webhook notifications
+- [NATS JetStream](./api/nats) - Event streaming and outbound messaging
 
 ---
 
 # Source: /docs/getting-started.md
 
+# Getting Started
+
+Waxum is a multi-session WhatsApp REST API gateway built with Rust. It provides a simple HTTP interface to interact with WhatsApp Web.
+
+## Features
+
+- **Multi-session support** — Manage multiple WhatsApp accounts
+- **QR Code and Pair Code authentication** — Connect via QR scan or phone number
+- **Send messages** — Text, image, video, audio, document, sticker, location, contact
+- **Interactive messages** — Polls, buttons, lists, payments, newsletters
+- **Webhook support** — Receive events with HMAC-SHA256 signatures
+- **NATS JetStream** — Optional durable event streaming and outbound message queue
+- **JWT authentication** — Secure API access
+- **Multi-database support** — PostgreSQL or MySQL via `DATABASE_URL`
+- **CLI arguments** — Configure token, database, and port from command line
+- **Swagger UI** — Interactive API documentation
+
+## Quick Start
+
+### With MySQL
+
+```bash
+./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/wars
+```
+
+### With PostgreSQL
+
+```bash
+./waxum --token mysecrettoken --db postgres://user:pass@localhost:5432/wagateway
+```
+
+```bash
+# Test it
+curl -H "Authorization: Bearer mysecrettoken" http://localhost:3451/health
+```
+
+## Using Docker Compose
+
+```bash
+git clone https://github.com/imtaqin/waxum.git
+cd waxum
+
+# Create .env
+cat > .env << 'EOF'
+DATABASE_URL=mysql://user:pass@host:3306/wars
+SUPERADMIN_TOKEN=mysecrettoken
+EOF
+
+docker compose up -d
+```
+
+## Build from Source
+
+1. **Requirements**
+   - Rust nightly
+   - PostgreSQL 14+ or MySQL 8+
+
+2. **Clone and build**
+   ```bash
+   git clone https://github.com/imtaqin/waxum.git
+   cd waxum
+   rustup default nightly
+   cargo build --release
+   ```
+
+3. **Run**
+   ```bash
+   # With MySQL
+   ./target/release/waxum --token mysecrettoken --db mysql://user:pass@localhost/mydb
+
+   # With PostgreSQL
+   ./target/release/waxum --token mysecrettoken --db postgres://user:pass@localhost/wagateway
+
+   # With .env file
+   cp .env.example .env
+   # Edit .env with your settings
+   ./target/release/waxum
+   ```
+
+## CLI Options
+
+```
+Usage: waxum [OPTIONS]
+
+Options:
+  -t, --token <TOKEN>    Set superadmin token
+  -d, --db <URL>         Set database URL (postgres/mysql)
+  -p, --port <PORT>      Set server port (default: 3451)
+  -h, --help             Show help
+```
+
+CLI arguments override `.env` values.
+
+## Access Points
+
+After starting the server:
+
+| Endpoint | Description |
+|----------|-------------|
+| `http://localhost:3451/health` | Health Check |
+| `http://localhost:3451/swagger-ui` | Swagger UI Documentation |
+| `http://localhost:3451/api/v1/sessions` | Sessions API |
+| `http://localhost:3451/api/v1/nats/status` | NATS Status (if enabled) |
+
+## Next Steps
+
+- [Installation Guide](./installation) — Detailed setup for Docker, Linux, Windows
+- [Authentication](./authentication) — Token setup and API authentication
+- [API Reference](./api/sessions) — Complete API documentation
+- [Webhooks](./api/webhooks) — Real-time event notifications
+- [NATS JetStream](./api/nats) — Event streaming and outbound messaging
 
 ---
 
 # Source: /docs/installation.md
 
+# Installation
+
+## Quick Start
+
+Download the binary for your platform from [GitHub Releases](https://github.com/imtaqin/waxum/releases) and run:
+
+```bash
+./waxum --token mysecrettoken
+```
+
+That's it. No database configured — Waxum drops a `waxum.db` SQLite file
+next to the binary and stores everything (sessions, webhooks, DLQ) there.
+Zero config.
+
+Scale-out or need Postgres / MySQL? Pass a `DATABASE_URL`:
+
+```bash
+./waxum --token mysecrettoken --db postgres://user:pass@localhost:5432/waxum
+./waxum --token mysecrettoken --db mysql://user:pass@localhost:3306/waxum
+```
+
+Schema migrations run automatically at startup on every backend.
+
+## Docker Compose
+
+```bash
+git clone https://github.com/imtaqin/waxum.git
+cd waxum
+```
+
+Create a `.env` file:
+
+```bash
+# Database — choose one:
+DATABASE_URL=mysql://user:password@host:3306/wars
+# DATABASE_URL=postgres://user:password@localhost:5432/wagateway
+
+# Authentication
+SUPERADMIN_TOKEN=your-secret-token
+
+# Optional
+JWT_SECRET=your-jwt-signing-secret
+WHATSAPP_STORAGE_PATH=/app/whatsapp_sessions
+RUST_LOG=waxum=info,tower_http=info
+```
+
+Then run:
+
+```bash
+docker compose up -d
+```
+
+This starts **NATS** (message queue) and the **Waxum API**. To also run a bundled PostgreSQL:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+```
+
+To run **without NATS**, remove or comment out the `NATS_URL` line in `.env`.
+
+## Build from Source
+
+### Linux (Ubuntu/Debian)
+
+```bash
+# Install dependencies
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libsqlite3-dev
+
+# Install Rust nightly
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+rustup default nightly
+
+# Clone and build
+git clone https://github.com/imtaqin/waxum.git
+cd waxum
+cargo build --release
+
+# Run
+./target/release/waxum --token mysecrettoken --db mysql://user:pass@localhost/wars
+```
+
+### Windows
+
+The prebuilt release binary is compiled with `x86_64-pc-windows-gnu`
+(MinGW runtime is statically linked) so it runs on a fresh Windows
+install without needing the Microsoft Visual C++ Redistributable
+(`VCRUNTIME140.dll`). Just download the `.zip`, extract, and run.
+
+To build from source:
+
+```powershell
+# 1. Install Rust from https://rustup.rs
+# 2. Open a new terminal after installation
+
+# Install nightly toolchain + the GNU target
+rustup default nightly
+rustup target add x86_64-pc-windows-gnu
+
+# MinGW for the C toolchain
+choco install mingw -y
+
+# Clone and build
+git clone https://github.com/imtaqin/waxum.git
+cd waxum
+cargo build --release --target x86_64-pc-windows-gnu
+
+# Run
+.\target\x86_64-pc-windows-gnu\release\waxum.exe --token mysecrettoken --db mysql://user:pass@localhost/wars
+```
+
+If you build with the default MSVC target instead
+(`cargo build --release` without `--target`), the resulting binary
+depends on `VCRUNTIME140.dll` and will fail with a "DLL not found"
+error on machines without the VC++ Redistributable installed.
+
+### macOS
+
+```bash
+# Install Xcode command line tools
+xcode-select --install
+
+# Install Rust nightly
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+rustup default nightly
+
+# Clone and build
+git clone https://github.com/imtaqin/waxum.git
+cd waxum
+cargo build --release
+
+# Run
+./target/release/waxum --token mysecrettoken --db postgres://user:pass@localhost/wagateway
+```
+
+## CLI Arguments
+
+```
+Usage: waxum [OPTIONS]
+
+Options:
+  -t, --token <TOKEN>    Set superadmin token
+  -d, --db <URL>         Set database URL (postgres/mysql)
+  -p, --port <PORT>      Set server port (default: 3451)
+  -h, --help             Show help
+```
+
+Examples:
+
+```bash
+# MySQL with custom port
+./waxum --token mytoken --db mysql://user:pass@localhost:3306/wars --port 8080
+
+# PostgreSQL
+./waxum -t mytoken -d postgres://user:pass@localhost:5432/wagateway
+```
+
+CLI arguments override `.env` values.
+
+## Database
+
+Waxum runs against three backends. Pick one, or pick none — the default
+is fine.
+
+### SQLite (default, zero-config)
+
+Leave `DATABASE_URL` empty and Waxum drops a local SQLite file next to
+the binary at `./waxum.db`. Schema is auto-migrated on boot. Good for
+development and single-node production.
+
+Override the path if you want:
+
+```bash
+./waxum --token mytoken --db sqlite://./data/waxum.db
+# or
+SQLITE_PATH=./data/waxum.db ./waxum --token mytoken
+```
+
+### PostgreSQL
+
+For scale-out, HA, and shared metadata across multiple Waxum nodes:
+
+```bash
+sudo -u postgres createdb waxum
+
+./waxum --token mytoken --db postgres://postgres:password@localhost:5432/waxum
+```
+
+### MySQL
+
+Same story, MySQL flavour:
+
+```bash
+mysql -u root -p -e "CREATE DATABASE waxum;"
+
+./waxum --token mytoken --db mysql://root:password@localhost:3306/waxum
+```
+
+Every backend runs the same idempotent `CREATE TABLE IF NOT EXISTS` +
+`ALTER TABLE ADD COLUMN IF NOT EXISTS` sequence at startup — no manual
+migrations, no `docker compose up` bootstrapping, no schema drift.
+
+:::info Legacy Postgres env vars
+If `DATABASE_URL` is unset and you set `POSTGRES_*` or `MYSQL_*` env
+vars, Waxum picks those up as fallback. They still work; prefer the
+`DATABASE_URL` form for new deployments.
+
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-password
+POSTGRES_DB=waxum
+```
+:::
+
+## Environment Variables
+
+### Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | *(none — falls back to `sqlite://./waxum.db`)* | Database connection URL (`postgres://`, `mysql://`, or `sqlite://`) |
+
+### Authentication
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUPERADMIN_TOKEN` | *(auto-generated JWT)* | API access token (any string) |
+| `JWT_SECRET` | *(random)* | JWT signing secret (for auto-generated tokens) |
+
+### Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3451` | Server port |
+| `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
+| `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
+
+### NATS JetStream (Optional)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NATS_URL` | *(none)* | NATS server URL — **required** to enable NATS |
+| `NATS_EVENTS_STREAM` | `WA_EVENTS` | Stream name for incoming events |
+| `NATS_SEND_STREAM` | `WA_SEND` | Stream name for outbound commands |
+| `NATS_EVENTS_MAX_AGE_DAYS` | `7` | Max age for event messages (days) |
+| `NATS_SEND_MAX_AGE_DAYS` | `1` | Max age for outbound commands (days) |
+| `NATS_TOKEN` | *(none)* | Authentication token |
+| `NATS_CREDS_FILE` | *(none)* | Path to credentials file |
+
+## Sample `.env` Files
+
+### MySQL (Recommended)
+
+```bash
+DATABASE_URL=mysql://user:password@localhost:3306/wars
+SUPERADMIN_TOKEN=mysecrettoken
+RUST_LOG=waxum=info,tower_http=info
+```
+
+### PostgreSQL with NATS
+
+```bash
+DATABASE_URL=postgres://user:password@localhost:5432/wagateway
+SUPERADMIN_TOKEN=mysecrettoken
+JWT_SECRET=your-jwt-signing-secret
+WHATSAPP_STORAGE_PATH=./whatsapp_sessions
+NATS_URL=nats://localhost:4222
+RUST_LOG=waxum=info,tower_http=info
+```
+
+## Verify Installation
+
+```bash
+# Health check
+curl http://localhost:3451/health
+# Should return: OK
+
+# Authenticated request
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3451/api/v1/sessions
+
+# Open Swagger UI in browser
+open http://localhost:3451/swagger-ui
+```
 
 ---
 
 # Source: /docs/authentication.md
 
+# Authentication
+
+Waxum uses token-based authentication. All API endpoints (except `/health` and `/swagger-ui`) require a valid token.
+
+## Setting Your Token
+
+There are three ways to set your superadmin token:
+
+### 1. CLI Argument (recommended for quick start)
+
+```bash
+./waxum --token YOUR_TOKEN
+```
+
+### 2. Environment Variable
+
+```bash
+export SUPERADMIN_TOKEN=YOUR_TOKEN
+```
+
+### 3. `.env` File
+
+```bash
+SUPERADMIN_TOKEN=YOUR_TOKEN
+```
+
+Your token can be **any string** you choose (e.g. `my-secret-token-123`). No need to generate a JWT manually.
+
+:::tip
+If you don't set `SUPERADMIN_TOKEN`, Waxum auto-generates a JWT token and prints it to the console on startup. Setting your own token is simpler and recommended.
+:::
+
+## Using the Token
+
+Include the token in the `Authorization` header with the `Bearer` prefix:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3451/api/v1/sessions
+```
+
+## Request Examples
+
+### List Sessions
+
+```bash
+curl -X GET \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:3451/api/v1/sessions
+```
+
+### Create Session
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "my-session", "name": "My Account"}' \
+  http://localhost:3451/api/v1/sessions
+```
+
+## Error Responses
+
+### Missing Token
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Missing or invalid Authorization header. Use: Bearer <token>"
+}
+```
+
+### Invalid Token
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Invalid token format"
+}
+```
+
+### Expired Token (JWT only)
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Token has expired"
+}
+```
+
+## How Authentication Works
+
+Waxum checks tokens in this order:
+
+1. **SUPERADMIN_TOKEN match** — if the Bearer token matches `SUPERADMIN_TOKEN`, access is granted immediately
+2. **JWT validation** — if no match, the token is decoded as a JWT signed with `JWT_SECRET`
+
+This means you can use either a plain string token or a JWT token.
+
+## JWT Configuration (Advanced)
+
+If you prefer JWT tokens, you can set a custom signing secret:
+
+```bash
+JWT_SECRET=your-super-secure-secret-key
+```
+
+The auto-generated JWT token contains:
+
+```json
+{
+  "sub": "superadmin",
+  "role": "superadmin",
+  "exp": 1798679117,
+  "iat": 1767143117
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `sub` | Subject (user identifier) |
+| `role` | User role (must be "superadmin") |
+| `exp` | Expiration timestamp (1 year from generation) |
+| `iat` | Issued at timestamp |
+
+## Using Swagger UI
+
+To authenticate API requests in Swagger UI:
+
+1. Open Swagger UI at `http://localhost:3451/swagger-ui`
+2. Click the **"Authorize"** button (lock icon) at the top right
+3. Enter your token:
+   ```
+   Bearer YOUR_TOKEN
+   ```
+4. Click **"Authorize"** then **"Close"**
+5. All API requests will now include your token
+
+## Public Endpoints
+
+These endpoints don't require authentication:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /swagger-ui/*` | Swagger UI |
+| `GET /api-docs/*` | OpenAPI spec |
 
 ---
 
 # Source: /docs/dashboard.md
 
+# Swagger UI
+
+Waxum includes an interactive Swagger UI for exploring and testing all API endpoints directly from your browser.
+
+## Accessing Swagger UI
+
+Open your browser and navigate to:
+
+```
+http://localhost:3451/swagger-ui
+```
+
+The OpenAPI JSON spec is available at:
+
+```
+http://localhost:3451/api-docs/openapi.json
+```
+
+## Features
+
+- **Interactive API Explorer** - Browse all endpoints organized by tags
+- **Try It Out** - Execute API calls directly from the browser
+- **Request/Response Examples** - See expected formats for each endpoint
+- **Authentication** - Enter your Bearer token to test authenticated endpoints
+- **Schema Viewer** - Explore all request/response data models
+
+## Authentication in Swagger
+
+1. Click the **Authorize** button (lock icon) at the top
+2. Enter `Bearer YOUR_TOKEN` (your `SUPERADMIN_TOKEN` value or the JWT shown at startup)
+3. Click **Authorize**
+4. All subsequent requests will include the `Authorization: Bearer <token>` header
+
+## API Tags
+
+Endpoints are organized into the following groups:
+
+| Tag | Description |
+|-----|-------------|
+| `sessions` | Session management and authentication |
+| `messages` | Send and manage messages |
+| `contacts` | Contact information and lookup |
+| `groups` | Group management |
+| `presence` | Online status |
+| `chatstate` | Typing indicators |
+| `blocking` | Block and unblock contacts |
+| `media` | Media upload and download |
+| `webhooks` | Webhook registration for events |
+| `privacy` | Privacy settings management |
+| `mex` | GraphQL/MEX operations |
+| `newsletter` | Newsletter/Channel messages |
+| `operations` | Spam reporting, TCToken, reconnection, and sync |
+| `nats` | NATS JetStream management and status |
 
 ---
 
 # Source: /docs/api/sessions.md
 
+# Sessions
+
+Manage WhatsApp sessions. Each session represents a connected WhatsApp account.
+
+## Create Session
+
+Creates a new session and automatically starts connecting to WhatsApp.
+
+```
+POST /api/v1/sessions
+```
+
+### Request Body
+
+```json
+{
+  "id": "my-session",
+  "name": "My Business Account",
+  "webhook": {
+    "url": "https://example.com/webhook",
+    "events": ["message", "connected"],
+    "secret": "webhook-secret"
+  },
+  "device": {
+    "os": "Windows",
+    "platform": "desktop"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | No | Custom session ID (auto-generated if not provided) |
+| `name` | string | No | Friendly name for the session |
+| `reuse` | boolean | No | Re-scan an existing session ID instead of failing — see below |
+| `webhook` | object | No | Webhook configuration |
+| `webhook.url` | string | Yes* | Webhook URL |
+| `webhook.events` | array | No | Events to subscribe (default: all) |
+| `webhook.secret` | string | No | HMAC secret for signature verification |
+| `device` | object | No | Per-session device identity override (see [Device Identity](#device-identity)) |
+| `device.os` | string | No | OS label shown in WhatsApp Linked Devices, e.g. `Windows`, `Mac OS X`, `Ubuntu` |
+| `device.platform` | string | No | Platform type — see table in [Device Identity](#device-identity) |
+| `device.version` | string | No | Dotted app version, e.g. `2.3000.1023902713`. Omit to use library default |
+
+### Reusing an existing session ID (`reuse`, v0.12.0+)
+
+By default, creating a session with an ID that already exists returns
+`409`. Pass `"reuse": true` to instead keep the original `session_id`
+and re-start the connect flow (QR/pair re-scan) on the same slot —
+the response is `200` with the existing session. `name` and `webhook`
+fields are ignored on reuse; update those via their own endpoints.
+`reuse` has no effect when the ID does not exist yet.
+
+### Response
+
+```json
+{
+  "session": {
+    "id": "my-session",
+    "name": "My Business Account",
+    "phone_number": null,
+    "push_name": null,
+    "status": "connecting",
+    "created_at": 1767143203,
+    "updated_at": 1767143203,
+    "last_connected_at": null,
+    "is_logged_in": false
+  }
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "business-1",
+    "name": "Business Account",
+    "webhook": {
+      "url": "https://example.com/webhook"
+    }
+  }'
+```
+
+---
 
 ## List Sessions
 
@@ -130,10 +917,17 @@ GET /api/v1/sessions/{session_id}/status
 {
   "status": "logged_in",
   "is_logged_in": true,
+  "socket_alive": true,
+  "paused": false,
   "phone_number": "628123456789",
   "push_name": "John Doe"
 }
 ```
+
+| Field | Description |
+|-------|-------------|
+| `socket_alive` | Raw socket liveness (v0.12.0+). Distinct from `is_logged_in`: a cached `logged_in` status can outlive a dead socket ("limbo"), and a live socket can precede login during QR/pair flows. |
+| `paused` | `true` after [Pause Session](./operations.md#pause-session) — the session is deliberately offline until resumed. |
 
 ### Status Values
 
@@ -194,6 +988,13 @@ whatsapp-rust persisted at pair time.
 
 Empty body is fine — falls back to environment defaults (`WA_DEVICE_OS`,
 `WA_DEVICE_PLATFORM`, `WA_DEVICE_VERSION`).
+
+:::tip Lifts an account-lock cooldown
+When WhatsApp locks an account, auto-reconnect pauses with an escalating
+cooldown (see the [`account_locked`](./webhooks.md#account-locked-event)
+webhook event). A manual `POST /connect` is the intended way out — it
+clears the cooldown and reconnects immediately.
+:::
 
 ---
 
@@ -263,6 +1064,203 @@ GET /api/v1/sessions/{session_id}/device
 
 ---
 
+## Session Tags
+
+Free-form short strings an operator attaches to a session to organise
+a fleet — e.g. `cs`, `blast-campaign-2`, `client:acme`, `region:jkt`.
+Added in v0.7.13.
+
+:::note In-memory, not a DB table
+Tags live in-memory on the running instance and are snapshotted to
+`{WHATSAPP_STORAGE_PATH}/session_tags.json` on every mutation, so a
+restart reloads them from that file rather than losing them. They are
+not stored in the SQL database alongside sessions/messages/etc. Not on
+the send hot path — tags are only consulted when `?tag=` is present on
+[List Sessions](#list-sessions), or by the console's overview
+grouping.
+:::
+
+### List Session Tags
+
+```
+GET /api/v1/sessions/{session_id}/tags
+```
+
+### Response
+
+```json
+{
+  "session_id": "my-session",
+  "tags": ["cs", "region:jkt"]
+}
+```
+
+### Replace Session Tags
+
+Overwrites the full tag set for a session.
+
+```
+PUT /api/v1/sessions/{session_id}/tags
+```
+
+#### Request Body
+
+```json
+{
+  "tags": ["cs", "region:jkt", "client:acme"]
+}
+```
+
+#### Response
+
+Same shape as [List Session Tags](#list-session-tags).
+
+### Add Session Tag
+
+Adds a single tag without disturbing the rest of the set.
+
+```
+POST /api/v1/sessions/{session_id}/tags
+```
+
+#### Request Body
+
+```json
+{
+  "tag": "priority"
+}
+```
+
+#### Response
+
+```json
+{
+  "session_id": "my-session",
+  "tag": "priority",
+  "changed": true,
+  "tags": ["cs", "region:jkt", "priority"]
+}
+```
+
+`changed` is `false` when the tag was already present.
+
+### Remove Session Tag
+
+```
+DELETE /api/v1/sessions/{session_id}/tags/{tag}
+```
+
+#### Response
+
+Same shape as [Add Session Tag](#add-session-tag), with `changed`
+reflecting whether the tag was actually present to remove.
+
+### List All Tags
+
+Every distinct tag across the fleet, with how many sessions carry it.
+
+```
+GET /api/v1/tags
+```
+
+#### Response
+
+```json
+[
+  { "tag": "cs", "session_count": 8 },
+  { "tag": "region:jkt", "session_count": 3 }
+]
+```
+
+Sorted by `session_count` descending, then alphabetically.
+
+### Filter Sessions by Tag
+
+[List Sessions](#list-sessions) accepts a `?tag=` query parameter to
+restrict results to sessions carrying that tag:
+
+```
+GET /api/v1/sessions?tag=region:jkt
+```
+
+Deleting a session also drops its tags from the in-memory registry and
+the JSON snapshot.
+
+---
+
+## Session Export / Import
+
+Move a session's local device identity and credentials between waxum
+instances — an explicit, operator-triggered migration. Added in
+v0.9.3.
+
+:::warning Not multi-instance failover
+`whatsapp-rust`'s storage is local-SQLite-only; it has no networked
+storage backend. Export/import is a manual, one-shot copy — not
+transparent failover or live replication between instances. WhatsApp
+also does not allow the same device credentials to be live on two
+places at once, so export always disconnects the source session first.
+:::
+
+### Export Session
+
+Packages the session's local storage directory (device identity,
+Signal protocol keys, noise handshake state — everything
+`whatsapp-rust` itself persists to disk) as a zip and streams it back.
+
+```
+POST /api/v1/sessions/{session_id}/export
+```
+
+Disconnects the session first — the underlying device credentials must
+never be live on two waxum instances simultaneously, so export always
+leaves the source session `disconnected` as a side effect, even if it
+was `logged_in` a moment earlier.
+
+#### Response
+
+`200` with `Content-Type: application/zip` and a
+`Content-Disposition: attachment; filename="{session_id}.waxum-session.zip"`
+header. The body is the zip archive — not JSON.
+
+### Import Session
+
+Restores a session's local storage directory from an export zip, e.g.
+after copying it to a different waxum instance.
+
+```
+POST /api/v1/sessions/{session_id}/import
+```
+
+The target session id must already exist (create it first if needed).
+Upload as `multipart/form-data` with the zip in a field named `file`:
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/import \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@my-session.waxum-session.zip"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Session storage imported — call /connect to bring it online"
+}
+```
+
+Notes:
+- Refuses to run (`409`) if the target session is currently connected
+  on this instance — disconnect it first, or import into a fresh
+  session id.
+- Does **not** auto-reconnect. Call
+  [Connect Session](#connect-session) afterwards to bring it online.
+- Zip entries are validated against path traversal ("zip-slip") before
+  extraction; unsafe entries abort the import with `400`.
+
+---
+
 ## Device Identity
 
 Controls how each session appears in WhatsApp's **Linked Devices** list at
@@ -324,6 +1322,101 @@ WA_DEVICE_VERSION=               # omit for library default
 
 # Source: /docs/api/messages.md
 
+# Messages
+
+Send various types of messages through WhatsApp.
+
+## LID auto-resolve {#lid-auto-resolve}
+
+WhatsApp migrated most consumer contacts to **LID-only** privacy
+addressing. Sending to a legacy `phone@s.whatsapp.net` JID for a
+LID-only contact is accepted by the WA edge **but silently dropped** —
+no error, no delivery.
+
+Every `/messages/*` endpoint in waxum runs the `to` field through
+`resolve_recipient_jid`:
+
+| `to` shape | What happens |
+|---|---|
+| `628123456789` (plain phone) | Parsed as `@s.whatsapp.net`, then a `usync` lookup translates it to the contact's `@lid` form when one exists. |
+| `628123456789@s.whatsapp.net` | Same translation as above. |
+| `12300954140784@lid` | Pass-through, no lookup. |
+| `120363...@g.us` / `...@broadcast` | Pass-through. |
+
+The translation is cached inside the upstream lib, so only the
+**first** send per contact pays the usync roundtrip (~50–200 ms);
+subsequent sends reuse the resolved LID. The response shows the JID
+that was actually used:
+
+```json
+{
+  "message_id": "3EB0...",
+  "timestamp": 1781065817,
+  "to": "20045283487834@lid"
+}
+```
+
+::: tip Always send the resolved JID back to clients
+Once you receive the `to` field with `@lid` in the response, persist it
+on the contact record. Subsequent sends become a single hop again on
+the waxum side too.
+:::
+
+::: warning This is send-side only
+This resolution runs when *you* send a message and only affects that
+API response's `to` field. It has no effect on inbound webhooks — a
+message received *from* a LID-only contact still carries `@lid` as
+the sender. See [`from_phone`](./webhooks.md#from-vs-from_phone-v097)
+in the webhook docs for the inbound equivalent.
+:::
+
+## Send Text Message
+
+```
+POST /api/v1/sessions/{session_id}/messages/text
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "text": "Hello from Waxum!",
+  "mentions": ["628987654321"],
+  "mention_all": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient JID |
+| `text` | string | Yes | Message text |
+| `mentions` | array | No | JIDs to @mention (v0.12.0+). Each entry may be a full JID or a bare phone number. Any mention whose `@user` form is missing from `text` is appended so clients render the mention highlight |
+| `mention_all` | boolean | No | Group chats only (v0.12.0+) — mention every participant. Participant JIDs are fetched live from group metadata and attached silently (no `@user` text is appended). Returns `400` for non-group recipients |
+
+### Response
+
+```json
+{
+  "message_id": "3EB0ABC123...",
+  "timestamp": 1700000000,
+  "to": "628123456789@s.whatsapp.net"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/text \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "628123456789",
+    "text": "Hello!"
+  }'
+```
+
+---
 
 ## Fake Reply (Anti-Ban)
 
@@ -631,7 +1724,7 @@ POST /api/v1/sessions/{session_id}/messages/buttons
 {
   "to": "628123456789",
   "content_text": "Please choose an option",
-  "footer": "Powered by WA-RS",
+  "footer": "Powered by Waxum",
   "buttons": [
     {
       "button_id": "btn_1",
@@ -690,7 +1783,7 @@ POST /api/v1/sessions/{session_id}/messages/list
       ]
     }
   ],
-  "footer": "Powered by WA-RS"
+  "footer": "Powered by Waxum"
 }
 ```
 
@@ -720,7 +1813,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 {
   "to": "628123456789",
   "body_text": "Choose an action",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "buttons": [
     {
       "name": "quick_reply",
@@ -750,7 +1843,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 `viewOnceMessageV2`-wrapped interactive messages do **not render** in
 WhatsApp Web / Desktop — they show as "This message couldn't load.
 Open the message on your phone to view it." This is a WA Web
-limitation, not a wa-rs bug. Buttons render and click correctly on the
+limitation, not a waxum bug. Buttons render and click correctly on the
 WhatsApp mobile app.
 :::
 
@@ -772,7 +1865,7 @@ POST /api/v1/sessions/{session_id}/messages/cta-url
 {
   "to": "628123456789",
   "body_text": "Check out our latest catalog",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "display_text": "Open website",
   "url": "https://example.com/catalog",
   "merchant_url": "https://example.com"
@@ -787,7 +1880,50 @@ POST /api/v1/sessions/{session_id}/messages/cta-url
 | `display_text` | string | Yes | Label rendered on the button (e.g. "Open website") |
 | `url` | string | Yes | URL the button opens |
 | `merchant_url` | string | No | Merchant URL shown in link preview UI on some clients. Falls back to `url` when omitted. |
+| `image` | object | No | Optional image displayed as the interactive header, above the body. Accepts `{ "url": "https://…" }` or `{ "data": "<base64>", "mimetype": "image/jpeg" }`. Added in v0.7.8. |
 | `reply_to` | string | No | Message ID to reply to |
+
+#### With an image header
+
+Since **v0.7.8**, `cta-url` can carry an image above the body. Waxum
+uploads the image to the WhatsApp CDN and wires it in as the
+interactive header media, so the button ships with a thumbnail on the
+recipient side.
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "Ramadan drop is live. Free shipping today only.",
+  "footer_text": "waxum.imtaqin.id",
+  "display_text": "Shop now",
+  "url": "https://example.com/ramadan",
+  "image": { "url": "https://cdn.example.com/promo/ramadan-header.jpg" }
+}
+```
+
+Or with a base64 body — useful when the image is generated on your
+side and you would rather not host a public URL:
+
+```json
+{
+  "to": "628123456789",
+  "body_text": "Your monthly statement is ready.",
+  "display_text": "Open PDF",
+  "url": "https://billing.example.com/october",
+  "image": {
+    "data": "iVBORw0KGgoAAAANS…truncated…",
+    "mimetype": "image/png"
+  }
+}
+```
+
+Notes:
+- Recommended shape: 4:3 or 16:9, ≥ 512 px on the long edge. WhatsApp
+  down-scales aggressively.
+- MIME must be `image/jpeg` or `image/png` — other types are rejected
+  at the WhatsApp side even if waxum accepts the upload.
+- When `image` is omitted the message renders as the text-only CTA
+  URL — same shape as before v0.7.8.
 
 ---
 
@@ -1625,6 +2761,68 @@ POST /api/v1/sessions/{session_id}/messages/newsletter-forward
 
 ---
 
+## List Session Messages (history)
+
+Session-wide message history in store-arrival order, newest first, with
+keyset cursor pagination. Backed by the upstream chat store rather than
+the search index — unlike [Search Session Messages](./search.md) it
+needs no full-text query and returns everything, including content-free
+message types.
+
+```
+GET /api/v1/sessions/{session_id}/messages?after=<seq>&limit=<n>
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `after` | integer | No | Keyset cursor: the `seq` of the last message on the previous page, taken verbatim from `next_cursor`. Omit for the newest page |
+| `limit` | integer | No | Page size. Default `20`, max `200` |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": 421,
+      "message_id": "3EB0C8F1A2B3C4D5E6",
+      "session_id": "main",
+      "chat_jid": "628123456789@s.whatsapp.net",
+      "sender_jid": "628123456789@s.whatsapp.net",
+      "direction": "in",
+      "msg_type": "text",
+      "body": "are we still on for lunch tomorrow?",
+      "snippet": null,
+      "msg_timestamp": "2026-07-21 10:30:00",
+      "push_name": "Jane Doe",
+      "media": null
+    }
+  ],
+  "count": 20,
+  "next_cursor": 402
+}
+```
+
+`next_cursor` is `null` on a short page, which means the end of the
+stored history. Each message also carries `push_name` (sender display
+name) and, for media types, a `media` download pointer you can pass
+straight to [Download Media](./media.md). Message fields otherwise
+match the [search response](./search.md#response-fields).
+
+:::note Cursor is not durable
+The `seq` cursor is assigned by the in-process chat store and is **not
+stable across restarts** — after a gateway restart, discard any saved
+cursor and page from the top again.
+:::
+
+For a single chat's history instead of the whole session, use the
+chat-scoped sibling `GET /api/v1/sessions/{session_id}/messages/chat/{chat_jid}`
+(`limit`/`offset` pagination, same message shape).
+
+---
+
 ## Media Data Format
 
 All media endpoints accept either URL or base64:
@@ -1676,6 +2874,34 @@ If you've already uploaded via the `/media/upload` endpoint:
 
 # Source: /docs/api/groups.md
 
+# Groups
+
+Manage and interact with WhatsApp groups.
+
+## List Groups
+
+Get all groups the session is part of.
+
+```
+GET /api/v1/sessions/{session_id}/groups
+```
+
+### Response
+
+```json
+{
+  "groups": [
+    {
+      "jid": "123456789-1234567890@g.us",
+      "name": "My Group",
+      "participant_count": 25
+    }
+  ],
+  "total": 1
+}
+```
+
+---
 
 ## Get Group
 
@@ -2097,6 +3323,75 @@ curl -X POST http://localhost:3451/api/v1/sessions/my-session/messages/text \
 
 # Source: /docs/api/contacts.md
 
+# Contacts
+
+Manage contacts and check WhatsApp availability.
+
+## List Stored Contacts (v0.6.1+)
+
+Paginated dump of the contact directory waxum has built locally for the
+session. Populated automatically as a side-effect of the event stream
+— no `usync` round-trip on read.
+
+```
+GET /api/v1/sessions/{session_id}/contacts
+```
+
+### Query Parameters
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `q` | string | — | Substring filter over `full_name`, `first_name`, `push_name`, `phone`, `business_name` |
+| `limit` | int | `100` | Page size, clamped 1–1000 |
+| `offset` | int | `0` | Page offset |
+
+### Response
+
+```json
+{
+  "contacts": [
+    {
+      "jid": "628xxxxxxxxxx@s.whatsapp.net",
+      "phone": "628xxxxxxxxxx",
+      "lid_jid": "20045283487834@lid",
+      "full_name": "John Doe",
+      "first_name": "John",
+      "push_name": "John",
+      "business_name": null,
+      "source": "appstate_sync",
+      "updated_at": "2026-06-11 14:32:08"
+    }
+  ],
+  "total": 1247,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+### `source` values
+
+| Value | Meaning |
+|-------|---------|
+| `appstate_sync` | Captured from a full appstate sync (initial backfill or remote re-sync). |
+| `appstate` | Incremental appstate mutation (single contact edited on the phone). |
+| `notification` | `<notification type="contacts"><update/>` server push. |
+| `push_name` | `PushNameUpdate` event (sender renamed themselves). |
+| `message` | Inbound message — phone + push_name surfaced from the wire. |
+
+::: tip Empty list right after pair?
+On a fresh pair the table starts empty and fills as appstate sync
+progresses + chats come in. WhatsApp doesn't expose the full
+address-book in one shot via the socket — this is the same model WA
+Web uses internally.
+:::
+
+::: warning Privacy
+The directory is **per session** and stored on your waxum database.
+Don't expose this endpoint to untrusted callers — `full_name` here is
+the saved name from the phone's address book.
+:::
+
+---
 
 ## Check on WhatsApp
 
@@ -2218,6 +3513,51 @@ POST /api/v1/sessions/{session_id}/contacts/users
 
 ---
 
+## Save Contact
+
+Save or rename a contact in the session's address book. The name is synced to the
+account's other linked devices, which lets integrations (for example Chatwoot) push
+a contact name back to the WhatsApp client.
+
+```
+PUT /api/v1/sessions/{session_id}/contacts/{jid}
+```
+
+### Request Body
+
+```json
+{
+  "full_name": "Jane Doe",
+  "first_name": "Jane",
+  "save_on_primary_addressbook": true
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `full_name` | string | Display name saved for the contact. |
+| `first_name` | string | Short name. Omitted from the mutation when absent. |
+| `save_on_primary_addressbook` | boolean | Also save to the phone's address book. Default `false`. |
+
+At least one of `full_name` or `first_name` is required.
+
+### Response
+
+```json
+{
+  "success": true
+}
+```
+
+### Errors
+
+| Status | Cause |
+|--------|-------|
+| `400` | Neither name provided, or `jid` is not a bare phone-number JID. LIDs, groups and device-specific JIDs are rejected. |
+| `503` | Session is not connected. |
+
+---
+
 ## JID Format
 
 WhatsApp uses JID (Jabber ID) format for identifiers:
@@ -2232,6 +3572,34 @@ WhatsApp uses JID (Jabber ID) format for identifiers:
 
 # Source: /docs/api/presence.md
 
+# Presence & Chat State
+
+Manage online status and typing indicators.
+
+## Set Presence
+
+Set your online/offline status.
+
+```
+POST /api/v1/sessions/{session_id}/presence/set
+```
+
+### Request Body
+
+```json
+{
+  "status": "available"
+}
+```
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `available` | Show as online |
+| `unavailable` | Show as offline |
+
+---
 
 ## Subscribe to Presence
 
@@ -2409,6 +3777,53 @@ GET /api/v1/sessions/{session_id}/blocking/check/{jid}
 
 # Source: /docs/api/media.md
 
+# Media
+
+Upload and download media files.
+
+## Upload Media
+
+Upload a media file to WhatsApp servers for later use in messages.
+
+```
+POST /api/v1/sessions/{session_id}/media/upload
+```
+
+### Request
+
+Send as `multipart/form-data`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | Yes | The media file to upload |
+| `media_type` | string | No | Type: `image`, `video`, `audio`, `document`, `sticker` |
+| `mimetype` | string | No | MIME type (auto-detected if not provided) |
+
+### Response
+
+```json
+{
+  "url": "https://mmg.whatsapp.net/...",
+  "direct_path": "/v/t62.7...",
+  "media_key": "base64-encoded-key",
+  "file_sha256": "base64-encoded-sha256",
+  "file_enc_sha256": "base64-encoded-enc-sha256",
+  "file_length": 12345,
+  "media_type": "image",
+  "mimetype": "image/jpeg"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/media/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/image.jpg" \
+  -F "media_type=image"
+```
+
+---
 
 ## Download Media
 
@@ -2513,11 +3928,547 @@ const fileBuffer = Buffer.from(data, 'base64');
 
 # Source: /docs/api/calls.md
 
+# Calls
+
+REST surface for WhatsApp voice and video calls. Three families of
+endpoints:
+
+- **Signalling** — [`ring`](#ring), [`reject`](#reject),
+  [`accept`](#accept), [`terminate`](#terminate). Attention-grab pings
+  and missed-call OTP flows. Also used to answer or drop incoming
+  calls surfaced by the `incoming_call` webhook.
+- **Media** — [`tts`](#tts) and [`play`](#play). Place an outgoing
+  call and stream real audio into it (synthesised speech or an
+  arbitrary audio file / URL). The peer picks up the call and hears
+  your audio, then waxum hangs up automatically once playback ends.
+- **Real-time WebSocket** — the [bidirectional media WebSocket](#media-websocket),
+  for live audio and (since v0.9.0) video, driven from your own code
+  instead of a canned payload.
+
+Audio media is fed through the upstream `whatsapp-rust` VoIP engine as
+16 kHz mono PCM, encoded to native MLOW frames on the fly — the same
+codec the WhatsApp app itself uses on 1:1 calls. 1:1 video is
+supported both for signalling (`kind: "video"` on [`ring`](#ring)) and
+for real media, via `kind=av` on the [media WebSocket](#media-websocket).
+
+:::warning Group calls are not supported
+`whatsapp-rust` has no multi-party call relay/SFU client — the VoIP
+engine only speaks the single-peer 1:1 protocol. This is a hard
+limitation at the library level, not a gap waxum could close at the
+REST layer. Every call endpoint here is 1:1 only.
+:::
+
+:::note Server requirements
+- **`/calls/play`** — requires `ffmpeg` on `$PATH` to decode arbitrary
+  audio sources (mp3/wav/ogg/m4a/URLs) down to PCM 16 kHz mono.
+- **`/calls/tts`** — requires `ffmpeg` on `$PATH` too (Edge TTS returns
+  MP3, which is decoded through the same ffmpeg step), but does
+  **not** need the `edge-tts` Python CLI or a Python interpreter —
+  speech synthesis itself runs through the pure-Rust
+  [`msedge-tts`](https://crates.io/crates/msedge-tts) crate, which
+  talks the Microsoft Edge readaloud WebSocket directly. This changed
+  from earlier versions that shelled out to the `edge-tts` CLI.
+- **`/calls/*/transcript`** — calls out to an external
+  whisper.cpp-compatible HTTP server via `WHISPER_API_URL`. No speech
+  model or C++ toolchain is bundled into or required by the waxum
+  binary itself — see [Transcribe Call Recording](#transcribe-call-recording).
+- Signalling-only endpoints (`ring`, `reject`, `accept`, `terminate`)
+  have no external dependencies.
+:::
+
+## Ring
+
+Ring a peer.
+
+```
+POST /api/v1/sessions/{session_id}/calls/ring
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "kind": "audio",
+  "call_id": "OPTIONAL-CUSTOM-CALL-ID"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient phone number or full JID |
+| `kind` | string | No | `"audio"` (default) or `"video"` |
+| `call_id` | string | No | Custom call id. Omit to auto-generate |
+
+`kind: "video"` adds a `<video enc="vp8">` codec child to the offer so
+the peer's phone shows the video-call incoming UI instead of the plain
+audio-call one. `ring` itself does not carry media — the peer hears a
+ringtone, then the call drops with "not connected" after the ring
+timeout. For calls with real audio, use [`/tts`](#tts) or
+[`/play`](#play); for real audio **and** video, use the
+[media WebSocket](#media-websocket) with `kind=av`.
+
+### Response
+
+```json
+{
+  "call_id": "00b92fd4ad13123648f76533b4939625",
+  "to": "628123456789@s.whatsapp.net"
+}
+```
+
+Save the returned `call_id` — you'll need it to terminate the call
+before the peer's phone times out.
+
+## Reject
+
+Reject an incoming call. Requires the `call_id` and caller JID surfaced
+by the `incoming_call` webhook event.
+
+```
+POST /api/v1/sessions/{session_id}/calls/reject
+```
+
+### Request Body
+
+```json
+{
+  "from": "628123456789@s.whatsapp.net",
+  "call_id": "00A0F769CA10E8F99EE309BDEAF4E933"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Call rejected"
+}
+```
+
+## Accept
+
+Accept an incoming call. Mark it as answered in the peer's call log.
+
+```
+POST /api/v1/sessions/{session_id}/calls/accept
+```
+
+### Request Body
+
+```json
+{
+  "from": "628123456789@s.whatsapp.net",
+  "call_id": "00A0F769CA10E8F99EE309BDEAF4E933"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Call accepted"
+}
+```
+
+## Terminate
+
+Hang up a live call (either an outgoing ring you started, or an
+accepted incoming call).
+
+```
+POST /api/v1/sessions/{session_id}/calls/terminate
+```
+
+### Request Body
+
+```json
+{
+  "peer": "628123456789@s.whatsapp.net",
+  "call_id": "00b92fd4ad13123648f76533b4939625",
+  "reason": "hangup"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `peer` | string | Yes | Peer JID |
+| `call_id` | string | Yes | The `call_id` to terminate |
+| `reason` | string | No | Terminate reason attr. Defaults to `"hangup"` |
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Call terminated"
+}
+```
+
+## Media plane (v0.7.9+)
+
+Media on `/calls/tts` and `/calls/play` is carried by WhatsApp's
+native **MLOW** audio codec — the same codec the WhatsApp app uses on
+1:1 calls — implemented as pure Rust inside `whatsapp-rust`. Waxum
+encodes PCM straight to MLOW frames (960 samples / 60 ms) and streams
+them through the outbound RTP session; the callee's phone plays them
+back through the normal WhatsApp call UI, sounding just like a
+regular call.
+
+An earlier iteration used raw PCM through `.audio()` and later Opus
+carried through MLOW's escape profile — both were silent in the
+field. If you were on v0.7.8 or older and saw peer phones ring but
+play nothing, the fix is on v0.7.9.
+
+### Server prerequisites
+- **`ffmpeg`** on `$PATH` — used to decode arbitrary sources
+  (mp3/wav/ogg/m4a/…) down to PCM 16 kHz mono. Required by both
+  `/tts` and `/play`. No other external dependency for speech itself:
+  Microsoft Edge TTS voices run through the `msedge-tts` Rust crate
+  directly, so neither the `edge-tts` CLI nor a Python interpreter is
+  needed.
+
+## TTS
+
+Place an outgoing voice call and speak a synthesised message into it.
+Uses the [`msedge-tts`](https://crates.io/crates/msedge-tts) Rust
+crate to talk the Microsoft Edge readaloud WebSocket directly — no
+`edge-tts` CLI, no Python.
+
+Typical use case: **voice OTP delivery** — call the user, read the
+6-digit code aloud, hang up. Higher trust than SMS, lower cost than
+Twilio Voice.
+
+```
+POST /api/v1/sessions/{session_id}/calls/tts
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "text": "Your verification code is 4 8 2 9 1 5. I repeat, 4 8 2 9 1 5.",
+  "voice": "id-ID-ArdiNeural",
+  "answer_grace_ms": 6000,
+  "record": true
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient phone number or full JID |
+| `text` | string | Yes | Text to synthesise. Non-empty. XML characters (`<`, `>`, `&`, `"`, `'`) are auto-escaped |
+| `voice` | string | No | Edge TTS voice short-name. Default `"id-ID-ArdiNeural"` |
+| `answer_grace_ms` | integer | No | Silence prefix in ms before the speech starts, so the callee has time to pick up. Default `6000` |
+| `record` | boolean | No | When `true`, waxum records the peer's inbound audio and exposes it at [`/recording.wav`](#peer-audio-recording) once the call ends. Default `false` |
+
+Voice ids are the standard edge-tts catalogue —
+`id-ID-ArdiNeural` (Bahasa Indonesia, male), `en-US-JennyNeural`,
+`ja-JP-NanamiNeural`, and so on. `GET /api/v1/voices` returns the full
+list this waxum instance can see.
+
+### Response
+
+```json
+{
+  "call_id": "9c0b12fe83aa47adbc9d1e4f6a7e0d81",
+  "to": "628123456789@s.whatsapp.net",
+  "recording_url": "/api/v1/sessions/main/calls/9c0b12fe83aa47adbc9d1e4f6a7e0d81/recording.wav"
+}
+```
+
+The call is placed and speech starts streaming in the background. The
+call auto-terminates ~500 ms after the last PCM frame is sent. Use
+[`/terminate`](#terminate) with the returned `call_id` to hang up
+earlier.
+
+`recording_url` is only present when `record: true` was passed. Fetch
+that URL **after the call ends** to download the peer's audio as a
+16 kHz mono WAV file.
+
+## Play
+
+Place an outgoing voice call and stream an arbitrary audio file (or
+URL) into it. Uses `ffmpeg` under the hood to decode → 16 kHz mono
+PCM, so anything ffmpeg understands works — mp3, wav, ogg, m4a,
+remote HTTP(S) URLs, even local file paths on the server.
+
+```
+POST /api/v1/sessions/{session_id}/calls/play
+```
+
+### Request Body
+
+```json
+{
+  "to": "628123456789",
+  "audio_url": "https://cdn.example.com/announcements/promo.mp3",
+  "answer_grace_ms": 6000,
+  "record": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient phone number or full JID |
+| `audio_url` | string | Yes | Anything ffmpeg can open — HTTP(S) URL, local path on the server, or `pipe:` |
+| `answer_grace_ms` | integer | No | Silence prefix in ms before playback starts. Default `6000` |
+| `record` | boolean | No | Record peer audio — see [`/recording.wav`](#peer-audio-recording) |
+
+Practical notes for playing music:
+- **Codec is 16 kHz mono MLOW**, tuned for speech. Vocals are clear,
+  instrumentals sound low-fi. This is a WhatsApp VoIP protocol
+  limit, not a waxum quality knob.
+- **Duration cap** — WhatsApp will drop the call after ~30-60 s of
+  media in most cases. Keep clips short.
+- The playback pipeline hangs up ~500 ms after the last PCM frame,
+  so a 30 s audio file → a ~36 s call (grace + audio + tail).
+
+### Response
+
+```json
+{
+  "call_id": "b3a1f7e0d2c6483b91a58f7c22e04d15",
+  "to": "628123456789@s.whatsapp.net",
+  "recording_url": null
+}
+```
+
+## Peer audio recording
+
+When `record: true` is passed to `/tts` or `/play`, waxum decodes the
+peer's incoming MLOW frames back to 16 kHz mono PCM and writes them
+to disk as a WAV file, keyed by session and call id
+(`{session_id}/recordings/{call_id}.wav`).
+
+By default this lives on the local filesystem, under
+`{WHATSAPP_STORAGE_PATH}/{session_id}/recordings/{call_id}.wav`. It
+can be redirected to S3-compatible object storage instead (real AWS
+S3, MinIO, R2, Wasabi, ...) by setting `S3_BUCKET` — see
+[S3 recording storage](#s3-recording-storage) below.
+
+It is also exposed over HTTP for download, regardless of which backend
+holds it:
+
+```
+GET /api/v1/sessions/{session_id}/calls/{call_id}/recording.wav
+```
+
+The `Content-Type` is `audio/wav` and a `Content-Disposition:
+attachment` header is set. The file is **only written after the peer
+hangs up** — polling the URL during the call returns `404` with a
+JSON body telling you to retry when the call ends.
+
+If the peer never answers (or never speaks), waxum still writes an
+empty WAV placeholder so the download endpoint always returns `200`
+after the call ends. Duration of the file is your ground truth for
+"did the peer actually say anything".
+
+### S3 recording storage
+
+Set `S3_BUCKET` to switch recording storage from local disk to an
+S3-compatible bucket:
+
+| Env var | Required | Description |
+|---|---|---|
+| `S3_BUCKET` | Yes (to enable S3) | Bucket name. Unset = local filesystem (default) |
+| `S3_ENDPOINT` | No | S3-compatible endpoint URL. Default `https://s3.amazonaws.com` |
+| `S3_REGION` | No | Default `us-east-1` |
+| `AWS_ACCESS_KEY_ID` | Yes (with `S3_BUCKET`) | Standard AWS-style credential env var |
+| `AWS_SECRET_ACCESS_KEY` | Yes (with `S3_BUCKET`) | Standard AWS-style credential env var |
+
+Call recordings are the only "media" waxum itself ever writes to
+disk — message media (images, video, documents) flows straight through
+to WhatsApp's own CDN and is never persisted locally, so recordings
+are the only thing this setting affects.
+
+If the S3 connection fails at startup, waxum logs an error and falls
+back to local filesystem storage rather than refusing to boot —
+recordings are a best-effort feature, same philosophy as webhook
+fan-out and message-search indexing elsewhere in waxum.
+
+## Media WebSocket
+
+For real-time audio (and, since v0.9.0, video) streaming — voice bots,
+live TTS, live transcription of the peer, or a full video call client —
+waxum exposes a WebSocket that carries media in both directions:
+
+```
+GET /api/v1/sessions/{session_id}/calls/media/ws?to=<phone_or_jid>&kind=audio
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient phone number or full JID |
+| `kind` | string | No | `"audio"` (default) — audio-only, original wire format. `"av"` — audio **and** video, tagged wire format. See below |
+
+Upgrades the HTTP connection to a WebSocket. On upgrade waxum places
+the outbound call. The first frame back is a text-frame JSON metadata
+blob describing the media format:
+
+```json
+{
+  "type": "call_started",
+  "call_id": "...",
+  "session_id": "main",
+  "to": "628123456789@s.whatsapp.net",
+  "sample_rate": 16000,
+  "frame_samples": 960,
+  "encoding": "pcm_s16le_mono_16khz",
+  "video": false,
+  "video_encoding": null,
+  "frame_format": "raw_pcm"
+}
+```
+
+`video` / `video_encoding` / `frame_format` reflect the requested
+`kind`; with `kind=av` you get `"video": true`,
+`"video_encoding": "h264_annexb"`, `"frame_format": "tagged"`.
+
+### `kind=audio` — audio only (original format, unchanged)
+
+Binary WebSocket frames carry **raw PCM directly**, no header —
+identical to the wire format from before video support existed, so
+existing audio-bot integrations need no changes:
+
+- **Client → server** — raw PCM (`s16le`, mono, 16 kHz). Prefer
+  chunks of 960 samples = 1920 bytes each (60 ms of audio).
+- **Server → client** — peer's PCM in the same shape, streamed as the
+  media arrives.
+
+### `kind=av` — audio + video (tagged format)
+
+Because the socket now carries two independent streams, every binary
+frame in both directions is prefixed with a 1-byte media-type tag:
+
+| Tag | Meaning | Payload |
+|---|---|---|
+| `0x00` | Audio | Raw PCM (`s16le`, mono, 16 kHz) — same bytes as the `kind=audio` payload, just with the tag byte in front |
+| `0x01` | Video | 2-byte header (`keyframe: u8`, `orientation: u8`) followed by raw H.264 Annex-B access unit bytes |
+
+:::note waxum is transport-only for video
+waxum relays H.264 Annex-B bytes between the WhatsApp VoIP media
+session and your WebSocket client — it does **not** encode or decode
+video itself. Your WebSocket client must bring its own H.264 encoder
+(e.g. drive `ffmpeg` or a hardware encoder) for outgoing video, and
+its own decoder for incoming video. This mirrors the "waxum calls out,
+doesn't do the media work" philosophy of [`/tts`](#tts) and
+[transcription](#transcribe-call-recording).
+:::
+
+Closing the WebSocket, or a transport error, hangs up the call.
+
+Ideal use cases: an AI voice agent (LLM + STT + TTS in a loop) driving
+a live phone conversation without waxum knowing anything about the
+assistant's logic; or a custom video-calling client that wants raw
+access to the H.264 stream instead of a canned TTS/play payload.
+
+## Transcribe Call Recording
+
+Forward a finished call's recording to an external whisper.cpp-style
+HTTP transcription server and return the text. Added in v0.9.1.
+
+```
+POST /api/v1/sessions/{session_id}/calls/{call_id}/transcript
+```
+
+Requires the `WHISPER_API_URL` environment variable, pointed at a
+whisper.cpp-compatible HTTP server (e.g. the whisper.cpp `server`
+example, run separately — in its own container or process). waxum
+posts the recording as a `multipart/form-data` `file` field and
+expects back a JSON body shaped `{"text": "..."}`.
+
+:::note Not bundled into waxum
+Speech-to-text is entirely delegated to whatever you point
+`WHISPER_API_URL` at. Building and running waxum itself requires no
+C++ toolchain, no whisper model file, and no GPU — the binary just
+makes an HTTP call. If `WHISPER_API_URL` is unset, the endpoint
+returns `500` explaining how to stand one up.
+:::
+
+### Response
+
+```json
+{
+  "text": "Hi, this is a message about your appointment tomorrow..."
+}
+```
+
+Fails with `404`-flavored `500` if the recording isn't there yet (call
+hasn't ended, or was never started with `record: true`) — wait until
+the peer hangs up, then retry.
+
+## Incoming Call Webhook
+
+An incoming call fires the `incoming_call` webhook event. Data payload:
+
+```json
+{
+  "from": "628123456789@s.whatsapp.net",
+  "stanza_id": "5C1F3A2E4B6D7F8E",
+  "call_id": "00A0F769CA10E8F99EE309BDEAF4E933",
+  "call_creator": "628123456789@s.whatsapp.net",
+  "notify": "Taqin",
+  "platform": "android",
+  "version": "2.25.37.76",
+  "timestamp": 1783483722,
+  "offline": false,
+  "action": "Offer { ... }"
+}
+```
+
+Take the `call_id` and `from` fields and forward them to
+`/calls/reject`, `/calls/accept`, or `/calls/terminate` as appropriate.
 
 ---
 
 # Source: /docs/api/webhooks.md
 
+# Webhooks
+
+Receive real-time events from WhatsApp via HTTP webhooks.
+
+## Register Webhook
+
+Register a webhook for a session.
+
+```
+POST /api/v1/sessions/{session_id}/webhooks
+```
+
+### Request Body
+
+```json
+{
+  "url": "https://example.com/webhook",
+  "events": ["message", "connected", "disconnected"],
+  "secret": "your-webhook-secret"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | Webhook endpoint URL |
+| `events` | array | No | Events to subscribe (default: all) |
+| `secret` | string | No | HMAC-SHA256 secret for signature |
+
+### Response
+
+```json
+{
+  "id": "webhook-uuid",
+  "url": "https://example.com/webhook",
+  "events": ["message", "connected", "disconnected"],
+  "enabled": true
+}
+```
+
+---
 
 ## List Webhooks
 
@@ -2606,6 +4557,75 @@ Both are cleared by `POST /webhooks/{id}/enable`.
 
 ---
 
+## Retries & Dead-letter Queue
+
+A delivery that gets a non-2xx response (or a transport error) is
+retried with exponential backoff in a background task — the event
+pipeline never blocks on a slow or dead target. The retry policy is
+configurable via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBHOOK_RETRY_MAX_ATTEMPTS` | `3` | Total delivery attempts per event before dead-lettering. Backoff: immediate, +5 s, +30 s, then doubling (60 s, 120 s, …) capped at 5 min |
+| `WEBHOOK_RETRY_ON_4XX` | `true` | Also retry 4xx responses. A 401/403 window is usually a fixable consumer-side misconfig, and dropping those events loses messages. Set to `false` to restore the old "4xx is permanent" behavior (408/429 are retried either way) |
+| `WEBHOOK_DLQ_CAPACITY` | `100` | Per-session in-memory DLQ ring size; oldest entries are evicted past the cap |
+
+Deliveries that exhaust every attempt land in a per-session
+**dead-letter queue**. Each entry keeps everything needed to replay:
+session id, webhook URL, event name, the verbatim payload, failure
+reason, attempt count and timestamp.
+
+> The in-memory DLQ is **lost on restart**. Failures are also recorded
+> in the DB `webhook_dlq` table, which is the durable record.
+
+### List DLQ Entries
+
+```
+GET /api/v1/sessions/{session_id}/webhooks/dlq
+```
+
+Newest first.
+
+```json
+{
+  "entries": [
+    {
+      "id": "dlq-entry-uuid",
+      "session_id": "my-session",
+      "webhook_url": "https://example.com/webhook",
+      "event": "message",
+      "payload": "{\"session_id\":\"my-session\",\"event\":\"message\",...}",
+      "last_error": "HTTP 401 Unauthorized",
+      "attempts": 3,
+      "failed_at": 1767143203
+    }
+  ],
+  "count": 1
+}
+```
+
+### Replay a DLQ Entry
+
+```
+POST /api/v1/sessions/{session_id}/webhooks/dlq/{entry_id}/replay
+```
+
+Re-delivers the stored payload verbatim through the same signing and
+retry path as a fresh event (including the HMAC secret captured at
+failure time, so the signature scheme is identical). The entry is
+removed up front; if the re-delivery also exhausts its retries it lands
+back in the DLQ as a new entry. Returns `400` if the URL's circuit
+breaker is currently OPEN — the entry stays queued in that case.
+
+```json
+{
+  "success": true,
+  "message": "Webhook DLQ entry replay scheduled"
+}
+```
+
+---
+
 ## Event Types
 
 ### Core Events
@@ -2657,6 +4677,10 @@ Both are cleared by `POST /webhooks/{id}/enable`.
 | `client_outdated` | Client version is outdated |
 | `offline_sync_preview` | Preview of offline messages available |
 | `offline_sync_completed` | Offline message sync completed |
+| `account_locked` | WhatsApp locked the account; auto-reconnect paused (v0.12.0+) |
+| `call_log_sync` | Call-log app-state mutation received |
+| `stream_error` | Stream-level error from WhatsApp (e.g. `429` rate limit) |
+| `enc_decrypt_failed` | A message failed to decrypt; carries which message and why |
 
 ---
 
@@ -2675,6 +4699,12 @@ All webhook payloads follow this format:
 }
 ```
 
+Message-event envelopes carry one extra top-level field (v0.12.0+):
+
+| Field | Description |
+|-------|-------------|
+| `offline` | `true` when the message was redelivered from the disconnect window (received while the session was offline, replayed on reconnect); `false` for live arrivals |
+
 ### Message Event
 
 ```json
@@ -2682,9 +4712,12 @@ All webhook payloads follow this format:
   "session_id": "my-session",
   "event": "message",
   "timestamp": 1767143203,
+  "offline": false,
   "data": {
     "from": "628123456789@s.whatsapp.net",
+    "from_phone": "628123456789",
     "chat": "628123456789@s.whatsapp.net",
+    "chat_phone": "628123456789",
     "message_id": "3EB0ABC123...",
     "is_from_me": false,
     "push_name": "Sender",
@@ -2699,6 +4732,45 @@ All webhook payloads follow this format:
   }
 }
 ```
+
+#### `from` vs `from_phone` (v0.9.7+)
+
+`from` is the raw JID WhatsApp used to address the message, verbatim —
+for [LID-only contacts](./messages.md#lid-auto-resolve) that is a
+`12300954140784@lid` value, not a phone number, and no amount of
+waiting for a later webhook or saving the contact changes that; the
+[auto-resolve](./messages.md#lid-auto-resolve) behavior only applies
+to `/messages/*` sends, not to inbound webhooks.
+
+`from_phone` is waxum's best-effort resolution of that sender to a
+plain phone number (`"628123456789"`, no JID suffix), added
+specifically so consumers don't have to do this themselves:
+
+- If `from` is already a phone-number JID, `from_phone` is that same
+  number — no lookup needed.
+- If `from` is a `@lid`, waxum looks it up in the LID↔phone mapping
+  the WhatsApp client already learns passively (from `usync`, message
+  sender attributes, history sync, etc. — no extra network call on
+  waxum's side). This is usually already warm for contacts that have
+  messaged you before.
+- If the mapping isn't known yet, `from_phone` is `null`. This can
+  happen for a LID's very first message before WhatsApp has surfaced
+  the phone number through any of those passive channels.
+
+`from_phone: null` is a real "not known yet" outcome, not a bug —
+build fallback handling for it if your integration depends on the
+phone number.
+
+#### `chat` vs `chat_phone` (v0.12.9+)
+
+`chat_phone` is the same best-effort resolution as `from_phone`, but
+for `chat` instead of `from`. This matters most for messages you sent
+via the API (`is_from_me: true`): `from`/`from_phone` there are your
+own session's number, and `chat` — the recipient — is the field you
+actually want a phone number for. On a LID-only recipient, `chat` is
+a `@lid` value and `chat_phone` follows the same "resolved if known,
+otherwise `null`" rules as `from_phone`. For a group chat, `chat` is
+a `@g.us` JID and `chat_phone` is always `null`.
 
 ### Location Message (v0.6.2+)
 
@@ -2771,27 +4843,158 @@ streams as a series of `message` events with the same `message_id`.
 }
 ```
 
+### Account Locked Event
+
+Emitted when WhatsApp locks the account (v0.12.0+). Auto-reconnect is
+paused with an escalating cooldown — repeated locks inside the same
+process lifetime walk the schedule, and the last step repeats once the
+list is exhausted. A manual
+[`POST /sessions/{id}/connect`](./sessions.md#connect-session) lifts the
+cooldown and reconnects immediately.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "account_locked",
+  "timestamp": 1767143203,
+  "data": {
+    "reason": "AccountLocked",
+    "cooldown_secs": 300,
+    "cooldown_until": 1767143503
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `reason` | Lock reason from WhatsApp |
+| `cooldown_secs` | Cooldown applied for this lock, in seconds |
+| `cooldown_until` | Unix timestamp when the cooldown ends |
+
+The cooldown schedule is configurable via the `ACCOUNT_LOCK_BACKOFF_SECS`
+environment variable — a comma-separated list of seconds, default
+`300,900,3600` (5 min → 15 min → 60 min).
+
+### Call Log Sync Event
+
+Emitted when a call-log app-state mutation arrives.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "call_log_sync",
+  "timestamp": 1767143203,
+  "data": {
+    "call_creator_jid": "628123456789@s.whatsapp.net",
+    "call_id": "ABCD1234...",
+    "from_me": false,
+    "timestamp": 1767143100,
+    "from_full_sync": false,
+    "record": "CallLogRecord { ... }"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `call_creator_jid` | JID that initiated the call |
+| `call_id` | WhatsApp call ID |
+| `from_me` | `true` when the call was placed by this account |
+| `timestamp` | Unix timestamp of the call-log record |
+| `from_full_sync` | `true` when the record arrived via a full (snapshot) app-state sync |
+| `record` | Debug representation of the full call-log record |
+
+### Stream Error Event
+
+Emitted on stream-level errors from WhatsApp — e.g. a `429` rate-limit
+rejection.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "stream_error",
+  "timestamp": 1767143203,
+  "data": {
+    "code": "429"
+  }
+}
+```
+
+### Enc Decrypt Failed Event
+
+Emitted when a specific message fails to decrypt, with which message
+and why.
+
+```json
+{
+  "session_id": "my-session",
+  "event": "enc_decrypt_failed",
+  "timestamp": 1767143203,
+  "data": {
+    "chat": "628123456789@s.whatsapp.net",
+    "sender": "628123456789@s.whatsapp.net",
+    "message_id": "3EB0ABC123...",
+    "enc_index": 0,
+    "enc_type": "skmsg",
+    "reason": "NoSession"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `chat` | Chat JID the failed message belongs to |
+| `sender` | Sender JID |
+| `message_id` | WhatsApp message ID that failed to decrypt |
+| `enc_index` | Index of the failing encryption layer |
+| `enc_type` | Encryption type of the failing payload (e.g. `skmsg`) |
+| `reason` | Failure reason (e.g. `NoSession`) |
+
 ---
 
 ## Signature Verification
 
-If you provide a `secret`, WA-RS will sign the payload with HMAC-SHA256.
+If you provide a `secret`, Waxum will sign the payload with HMAC-SHA256.
 
-The signature is sent in the `X-Webhook-Signature` header:
+Three headers are sent together:
 
 ```
+X-Webhook-Timestamp: 1767143203
 X-Webhook-Signature: sha256=abc123...
+X-Webhook-Signature-Version: v2
 ```
+
+**Signature scheme `v2` (v0.9.8+):** the signature covers
+`{timestamp}.{raw body}` (the `X-Webhook-Timestamp` value and the raw
+request body joined with a literal `.`), not the raw body alone — a
+captured `(url, timestamp, signature, body)` tuple has a valid signature
+forever otherwise, since nothing about it changes on replay. The HMAC-SHA256
+digest is hex-encoded and prefixed with `sha256=`. Reject anything where
+`X-Webhook-Timestamp` is further than a few minutes from your own clock
+*before* checking the signature; that's what actually stops replay, the
+signature alone only proves the payload wasn't tampered with.
+
+`X-Webhook-Signature-Version` tells you which scheme produced the
+signature: `v2` is the timestamp-prefixed scheme above. Deliveries from
+waxum < v0.9.8 signed the raw body alone and carried no version header —
+if you support both, treat a missing header as the legacy `v1` scheme.
 
 ### Verification Example (Node.js)
 
 ```javascript
 const crypto = require('crypto');
 
-function verifySignature(payload, signature, secret) {
+const MAX_CLOCK_SKEW_SECONDS = 300; // 5 minutes
+
+function verifySignature(payload, timestamp, signature, secret) {
+  const skew = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(skew) || skew > MAX_CLOCK_SKEW_SECONDS) {
+    return false; // too old (or too far in the future) -- possible replay
+  }
+
   const expected = 'sha256=' + crypto
     .createHmac('sha256', secret)
-    .update(payload)
+    .update(`${timestamp}.${payload}`)
     .digest('hex');
 
   return crypto.timingSafeEqual(
@@ -2802,10 +5005,11 @@ function verifySignature(payload, signature, secret) {
 
 // Express middleware
 app.post('/webhook', (req, res) => {
+  const timestamp = req.headers['x-webhook-timestamp'];
   const signature = req.headers['x-webhook-signature'];
   const payload = JSON.stringify(req.body);
 
-  if (!verifySignature(payload, signature, 'your-secret')) {
+  if (!verifySignature(payload, timestamp, signature, 'your-secret')) {
     return res.status(401).send('Invalid signature');
   }
 
@@ -2818,13 +5022,20 @@ app.post('/webhook', (req, res) => {
 ### Verification Example (Python)
 
 ```python
-import hmac
-import hashlib
 
-def verify_signature(payload, signature, secret):
+MAX_CLOCK_SKEW_SECONDS = 300  # 5 minutes
+
+def verify_signature(payload, timestamp, signature, secret):
+    try:
+        skew = abs(time.time() - int(timestamp))
+    except (TypeError, ValueError):
+        return False
+    if skew > MAX_CLOCK_SKEW_SECONDS:
+        return False  # too old (or too far in the future) -- possible replay
+
     expected = 'sha256=' + hmac.new(
         secret.encode(),
-        payload.encode(),
+        f'{timestamp}.{payload}'.encode(),
         hashlib.sha256
     ).hexdigest()
 
@@ -2845,16 +5056,260 @@ def verify_signature(payload, signature, secret):
 
 # Source: /docs/api/health.md
 
+# Health & Liveness
+
+Endpoints for load balancers, container orchestrators, and monitoring
+probes. All three probes bypass JWT auth.
+
+## `/livez` — liveness
+
+Static probe. Returns `200 OK` as long as the HTTP server is up. Uses no
+downstream dependencies (no DB, no filesystem, no state). Use as the
+Kubernetes `livenessProbe` / systemd watchdog / docker HEALTHCHECK — a
+`503` here means the process is deadlocked and should be restarted.
+
+```
+GET /livez
+```
+
+```
+OK
+```
+
+## `/readyz` — readiness
+
+Probe that also touches the DB pool. Runs `SELECT 1` against the
+configured backend (Postgres / MySQL / SQLite) and reports the current
+number of in-memory sessions plus per-session liveness (v0.12.0+).
+Returns `200` when the DB responds and `503` when it does not.
+
+Use as Kubernetes `readinessProbe` — a `503` here temporarily removes
+the pod from the load balancer without killing it, letting the DB
+recover.
+
+```
+GET /readyz
+```
+
+```json
+{
+  "db": "ok",
+  "sessions_known": 500,
+  "sessions_live": 498,
+  "sessions": [
+    {
+      "id": "my-session",
+      "status": "logged_in",
+      "socket_alive": true
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `db` | `ok` when the DB probe answered, `fail` otherwise |
+| `sessions_known` | Session rows known to the DB |
+| `sessions_live` | In-memory sessions whose socket is currently alive (v0.12.0+) |
+| `sessions` | Per-session `id`, `status`, and `socket_alive` (v0.12.0+). `socket_alive` is raw socket liveness — see [Get Session Status](./sessions.md#get-session-status) |
+
+When the DB probe fails (`503` — the session fields are still reported,
+since they come from in-memory state):
+
+```json
+{
+  "db": "fail",
+  "sessions_known": 500,
+  "sessions_live": 498,
+  "sessions": [
+    {
+      "id": "my-session",
+      "status": "logged_in",
+      "socket_alive": true
+    }
+  ]
+}
+```
+
+## `/health` — legacy alias
+
+Same shape as `/livez`, kept as a compatibility alias for existing
+Docker HEALTHCHECK / uptime monitors. New deployments should point at
+`/livez` for liveness and `/readyz` for readiness.
+
+```
+GET /health
+```
+
+```
+OK
+```
+
+## Metrics
+
+Prometheus text exposition on `/metrics` (JWT bypass). Counters and
+gauges for sessions, webhook dispatch, and message throughput. See the
+`prometheus` crate defaults for the metric names.
+
+Session liveness metrics (v0.12.0+):
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `waxum_sessions_total` | gauge | Session runtimes resident in memory |
+| `waxum_sessions_live` | gauge | Sessions whose upstream client agrees it's live |
+| `waxum_session_socket_alive{session_id}` | gauge | Per-session raw socket liveness (`1` = transport connected, `0` = down). Catches the "limbo" case where a cached `logged_in` outlives a dead socket |
+| `waxum_session_socket_drops_total{session_id}` | counter | Per-session count of socket drops (`Event::Disconnected`) |
+| `waxum_session_reconnects_total{session_id}` | counter | Per-session count of successful reconnects |
 
 ---
 
 # Source: /docs/api/privacy.md
 
+# Privacy
+
+View privacy settings for a WhatsApp session.
+
+## Get Privacy Settings
+
+Retrieve the current privacy settings for the connected account.
+
+```
+GET /api/v1/sessions/{session_id}/privacy/settings
+```
+
+### Response
+
+```json
+{
+  "settings": [
+    {
+      "category": "last",
+      "value": "contacts"
+    },
+    {
+      "category": "online",
+      "value": "all"
+    },
+    {
+      "category": "profile",
+      "value": "contacts"
+    },
+    {
+      "category": "status",
+      "value": "contacts"
+    },
+    {
+      "category": "group_add",
+      "value": "contacts"
+    },
+    {
+      "category": "read_receipts",
+      "value": "all"
+    }
+  ]
+}
+```
+
+### Privacy Categories
+
+| Category | Description |
+|----------|-------------|
+| `last` | Who can see your last seen time |
+| `online` | Who can see when you're online |
+| `profile` | Who can see your profile photo |
+| `status` | Who can see your status updates |
+| `group_add` | Who can add you to groups |
+| `read_receipts` | Whether read receipts are enabled |
+
+### Privacy Values
+
+| Value | Description |
+|-------|-------------|
+| `all` | Everyone |
+| `contacts` | My contacts only |
+| `none` | Nobody |
+| `contact_blacklist` | Contacts except specific people |
+| `match_last_seen` | Match last seen setting |
+
+### Example
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/privacy/settings \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
 
 ---
 
 # Source: /docs/api/mex.md
 
+# MEX / GraphQL
+
+Execute WhatsApp internal GraphQL queries and mutations via the MEX (Meta Experience) API.
+
+## MEX Query
+
+Execute a GraphQL query against WhatsApp's internal API.
+
+```
+POST /api/v1/sessions/{session_id}/mex/query
+```
+
+### Request Body
+
+```json
+{
+  "doc_id": "1234567890",
+  "variables": {
+    "key": "value"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `doc_id` | string | Yes | GraphQL document ID |
+| `variables` | object | Yes | Query variables as JSON |
+
+### Response
+
+```json
+{
+  "data": {
+    "result": "..."
+  },
+  "errors": null
+}
+```
+
+On error:
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "Error description",
+      "error_code": 1234,
+      "is_retryable": false,
+      "severity": "ERROR"
+    }
+  ]
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/mex/query \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "1234567890",
+    "variables": {"input": {"key": "value"}}
+  }'
+```
+
+---
 
 ## MEX Mutate
 
@@ -2909,6 +5364,75 @@ curl -X POST http://localhost:3451/api/v1/sessions/my-session/mex/mutate \
 
 # Source: /docs/api/operations.md
 
+# Operations
+
+Spam reporting, trust contact token management, auto-reconnect, history
+sync configuration, on-demand pause/resume, and app-state resync.
+
+## Spam Report
+
+Report a message as spam.
+
+```
+POST /api/v1/sessions/{session_id}/spam/report
+```
+
+### Request Body
+
+```json
+{
+  "message_id": "3EB0ABC123...",
+  "message_timestamp": 1700000000,
+  "from_jid": "628123456789@s.whatsapp.net",
+  "spam_flow": "message_menu"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message_id` | string | Yes | Message ID being reported |
+| `message_timestamp` | number | Yes | Timestamp of the message |
+| `from_jid` | string | No | JID of the message sender |
+| `participant_jid` | string | No | Participant JID (group messages) |
+| `group_jid` | string | No | Group JID (group reports) |
+| `group_subject` | string | No | Group name (group reports) |
+| `spam_flow` | string | No | Report flow type (default: `message_menu`) |
+| `media_type` | string | No | Media type of the message |
+
+### Spam Flow Types
+
+| Flow | Description |
+|------|-------------|
+| `message_menu` | Report from message context menu |
+| `group_spam_banner_report` | Report from group spam banner |
+| `group_info_report` | Report from group info page |
+| `contact_info` | Report from contact info page |
+| `status_report` | Report from status viewer |
+
+### Response
+
+```json
+{
+  "success": true,
+  "report_id": "report-uuid"
+}
+```
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/spam/report \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message_id": "3EB0ABC123...",
+    "message_timestamp": 1700000000,
+    "from_jid": "628123456789@s.whatsapp.net",
+    "spam_flow": "message_menu"
+  }'
+```
+
+---
 
 ## TCToken - Issue Tokens
 
@@ -3055,6 +5579,15 @@ Get the current auto-reconnect configuration.
 GET /api/v1/sessions/{session_id}/reconnect
 ```
 
+:::note Works while the socket is down (v0.12.0+)
+This endpoint (and its `PUT` sibling, and the two
+[history-sync](#history-sync---get) endpoints) is served from stored
+config, so it answers even when the session's socket is down —
+disabling auto-reconnect on a dead session is exactly the case that
+needs it. An unknown session ID returns `404`; config access no longer
+returns `503`.
+:::
+
 ### Response
 
 ```json
@@ -3173,8 +5706,170 @@ curl -X PUT http://localhost:3451/api/v1/sessions/my-session/history-sync \
 
 ---
 
+## Pause Session
+
+Take a session offline on demand, without deleting or fully
+disconnecting it. The session stays paused (deliberately offline) until
+resumed — the [session status](./sessions.md#get-session-status)
+reports `paused: true` while paused.
+
+```
+POST /api/v1/sessions/{session_id}/pause
+```
+
+### Response
+
+```json
+{
+  "paused": true
+}
+```
+
+---
+
+## Resume Session
+
+Bring a paused session back online.
+
+```
+POST /api/v1/sessions/{session_id}/resume
+```
+
+### Response
+
+```json
+{
+  "paused": false
+}
+```
+
+---
+
+## App-State Resync
+
+Force a re-fetch of one or more app-state collections (block lists,
+chat mute/pin state, etc.) from the WhatsApp server.
+
+```
+POST /api/v1/sessions/{session_id}/appstate/resync
+```
+
+### Request Body
+
+```json
+{
+  "collections": ["critical_block", "regular_low"],
+  "mode": "incremental"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `collections` | array | Yes | Collections to re-fetch: `critical_block`, `critical_unblock_low`, `regular_low`, `regular_high`, `regular`. Must not be empty — an unknown name returns `400` |
+| `mode` | string | No | `incremental` (default) asks for patches after the stored version; `snapshot` discards the stored state and rebuilds the collection from the server's snapshot |
+
+### Response
+
+```json
+{
+  "synced": ["critical_block"],
+  "fatal": [],
+  "retryable": ["regular_low"],
+  "skipped": [],
+  "all_synced": false
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `synced` | Fetched, applied and persisted |
+| `fatal` | Refused by the server outright (400/404); retrying will not clear these |
+| `retryable` | Not synced, but a later attempt can succeed |
+| `skipped` | Left to another sync already fetching the collection |
+| `all_synced` | `true` when every requested collection came back synced |
+
+Returns `400` for an invalid body and `503` when the session has no
+live client.
+
+### Example
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/appstate/resync \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "collections": ["critical_block", "critical_unblock_low"]
+  }'
+```
+
+---
+
 # Source: /docs/api/nats.md
 
+# NATS JetStream
+
+Waxum integrates with [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) for durable event streaming and queue-based outbound messaging. NATS is **optional** — if `NATS_URL` is not set, the API works exactly as before using webhooks only.
+
+## Overview
+
+NATS JetStream provides two capabilities:
+
+1. **Incoming Events** — All WhatsApp events are published to a JetStream stream, allowing external consumers to subscribe and process events with delivery guarantees
+2. **Outbound Messages** — External systems can publish message commands to a queue, and Waxum will consume and send them via WhatsApp
+
+```
+┌──────────────┐     wa.events.{session}.{type}     ┌──────────────────┐
+│   Waxum      │ ─────────────────────────────────► │  Your Consumer   │
+│   Gateway    │                                     │  (subscribe)     │
+│              │ ◄───────────────────────────────── │                  │
+└──────────────┘     wa.send.{session}               │  Your Publisher  │
+                                                     └──────────────────┘
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NATS_URL` | *(none)* | NATS server URL. **Required** to enable NATS |
+| `NATS_EVENTS_STREAM` | `WA_EVENTS` | Stream name for incoming events |
+| `NATS_SEND_STREAM` | `WA_SEND` | Stream name for outbound commands |
+| `NATS_EVENTS_MAX_AGE_DAYS` | `7` | Max age for events (days) |
+| `NATS_SEND_MAX_AGE_DAYS` | `1` | Max age for outbound commands (days) |
+| `NATS_TOKEN` | *(none)* | Optional authentication token |
+| `NATS_CREDS_FILE` | *(none)* | Optional NATS credentials file path |
+
+### Docker Compose
+
+The default `docker-compose.yml` includes a NATS server with JetStream enabled:
+
+```yaml
+nats:
+  image: nats:2.10-alpine
+  container_name: wagateway-nats
+  command: ["--jetstream", "--store_dir=/data"]
+  volumes:
+    - nats_data:/data
+  ports:
+    - "4222:4222"   # Client connections
+    - "8222:8222"   # HTTP monitoring
+  restart: unless-stopped
+```
+
+The API service connects automatically:
+
+```yaml
+api:
+  environment:
+    NATS_URL: nats://nats:4222
+```
+
+### Disabling NATS
+
+To run without NATS, simply remove the `NATS_URL` environment variable. The API will function in webhooks-only mode.
+
+---
 
 ## Subject Hierarchy
 
@@ -3240,7 +5935,6 @@ nats sub "wa.events.my-session.>"
 ### Subscribing (Node.js)
 
 ```javascript
-import { connect, JSONCodec } from 'nats';
 
 const nc = await connect({ servers: 'nats://localhost:4222' });
 const js = nc.jetstream();
@@ -3261,8 +5955,6 @@ for await (const msg of sub) {
 ### Subscribing (Python)
 
 ```python
-import asyncio
-import nats
 
 async def main():
     nc = await nats.connect("nats://localhost:4222")
@@ -3280,7 +5972,7 @@ asyncio.run(main())
 
 ## Outbound Messages
 
-Publish message commands to `wa.send.{session_id}` and WA-RS will consume and send them via WhatsApp.
+Publish message commands to `wa.send.{session_id}` and Waxum will consume and send them via WhatsApp.
 
 ### Consumer Details
 
@@ -3403,7 +6095,7 @@ The `request_id` field is optional. If provided, it will be included in the `sen
   "contact": {
     "display_name": "John Doe",
     "phones": [
-      { "number": "+628111222333", "phone_type": "CELL" }
+      { "number": "+628123456789", "phone_type": "CELL" }
     ]
   },
   "request_id": "uuid"
@@ -3482,7 +6174,7 @@ The `request_id` field is optional. If provided, it will be included in the `sen
   "type": "interactive",
   "to": "628123456789",
   "body_text": "Click a button",
-  "footer_text": "Powered by WA-RS",
+  "footer_text": "Powered by Waxum",
   "buttons": [
     {
       "name": "quick_reply",
@@ -3555,7 +6247,7 @@ nats pub "wa.send.my-session" '{"type":"image","to":"628123456789","image":{"url
 
 ## Send Results
 
-After processing an outbound command, WA-RS publishes a result to `wa.events.{session_id}.send_result`:
+After processing an outbound command, Waxum publishes a result to `wa.events.{session_id}.send_result`:
 
 ```json
 {
@@ -3722,3 +6414,1080 @@ nats consumer info WA_SEND wa-send-worker
 # Watch events in real-time
 nats sub "wa.events.>" --last=10
 ```
+
+---
+
+# Source: /docs/api/business.md
+
+# Business
+
+WhatsApp Business catalog, collections and profile — backed by `wacore::iq::business` (IQ `w:biz` `v="3"`) and MEX (`query_catalog`, `query_product_collections`, `biz_query_order`). Synced from `whatsapp-rust 5e084b9b` (`feat(business): #1252`).
+
+## Get Catalog
+
+```
+GET /api/v1/sessions/{session_id}/business/catalog?jid={business_jid}&limit=10&after={cursor}&width=100&height=100
+```
+
+Fetches one page of a business catalog. Paginate via `after` cursor from `after_cursor`.
+
+### Query Parameters
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `jid` | string | required | Business JID (`5599…@s.whatsapp.net`) |
+| `limit` | u32 | 10 | Products per page (`CatalogOptions::limit`) |
+| `after` | string | — | Cursor from previous `after_cursor` |
+| `width`/`height` | u32 | 100 | Thumbnail edge in px |
+
+### Response
+
+```json
+{
+  "products": "...debug...",
+  "after_cursor": "eyJ...",
+  "before_cursor": null
+}
+```
+
+### Example
+
+```bash
+curl "http://localhost:3451/api/v1/sessions/my-session/business/catalog?jid=559999999999@s.whatsapp.net" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Get Collections
+
+```
+GET /api/v1/sessions/{session_id}/business/collections?jid={business_jid}&limit=51&item_limit=10&after={cursor}
+```
+
+Collections carry products inline. `item_limit` caps products per collection.
+
+### Query Parameters
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `jid` | string | required | Business JID |
+| `limit` | u32 | 51 | Collections per page (`collection_limit`) |
+| `item_limit` | u32 | 10 | Products per collection |
+| `after` | string | — | Forward cursor only (`after_cursor`) |
+| `width`/`height` | u32 | 100 | Thumbnail edge |
+
+### Response
+
+```json
+{
+  "collections": "...debug...",
+  "after_cursor": "eyJ..."
+}
+```
+
+---
+
+## Get Order
+
+```
+GET /api/v1/sessions/{session_id}/business/order?jid={business_jid}&order_id={id}&token={token}
+```
+
+`order_id` and `token` come from the `OrderMessage` that announced the order. Token is a per-order capability.
+
+### Example
+
+```bash
+curl "http://localhost:3451/api/v1/sessions/my-session/business/order?jid=5599@s.whatsapp.net&order_id=ORDER_123&token=TOKEN" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+## Update Business Profile
+
+```
+PATCH /api/v1/sessions/{session_id}/business/profile
+```
+
+Delta update — only sent fields are patched. Mirrors `BusinessProfileUpdate`.
+
+### Request Body
+
+```json
+{
+  "description": "Best coffee in town",
+  "email": "hello@bisnis.id",
+  "websites": ["https://bisnis.id"],
+  "address": "Jl. Sudirman No.1",
+  "category": "12"
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `description` | string | Bio |
+| `email` | string | Contact email |
+| `websites` | string[] | Max `BUSINESS_PROFILE_MAX_WEBSITES` (clear with `[]`) |
+| `address` | string | Street address |
+| `category` | string | Category *id* (directory id, not name) |
+
+### Example
+
+```bash
+curl -X PATCH http://localhost:3451/api/v1/sessions/my-session/business/profile \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"Updated via Waxum","websites":["https://baru.id"]}'
+```
+
+---
+
+## Remove Cover Photo
+
+```
+DELETE /api/v1/sessions/{session_id}/business/cover-photo/{photo_id}
+```
+
+`photo_id` is the `fbid` from the cover-photo upload receipt.
+
+```bash
+curl -X DELETE http://localhost:3451/api/v1/sessions/my-session/business/cover-photo/123456789 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+# Source: /docs/api/bots.md
+
+# Bots
+
+## List Bots
+
+```
+GET /api/v1/sessions/{session_id}/bots
+```
+
+Fetches the bot directory (`client.bots().list()` → `GetBotListSpec`, IQ). WhatsApp Web calls this once at session start and every 24h (`bonsai_update_interval`). Every section is returned with presentation metadata (`type`, `display_type`, themes).
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/bots \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Response:
+
+```json
+{
+  "bots": "...debug..."
+}
+```
+
+## Capping
+
+```
+GET /api/v1/sessions/{session_id}/capping
+```
+
+New-chat capping status (`feat(iq): #1251` `CappingStatus` / `NewChatMessageCapping`). Currently returns placeholder; full MEX query (`xwa2_capping`) can be issued via `POST /mex/query` with the `NewChatCapping` doc until typed gateway is wired.
+
+```json
+{
+  "capping": null,
+  "note": "capping query requires mex; use /mex/query with NewChatCapping doc"
+}
+```
+
+---
+
+# Source: /docs/api/labels.md
+
+# Labels & Quick Replies
+
+App State Sync (`syncd`, `regular` collection) — labels, quick replies and account settings (`whatsapp-rust 5e084b9b` `feat(appstate): #1250`).
+
+## Labels
+
+Labels are created/edited via `label_edit` (`["label_edit", labelId]`) and associations via `label_jid` / `label_message`.
+
+### Create Label
+
+```
+POST /api/v1/sessions/{session_id}/labels
+```
+
+```json
+{
+  "label_id": "my-label-id",
+  "name": "My Label",
+  "color_id": 5
+}
+```
+
+`color_id` 0–19 matches WA Web palette. Upsert — same call renames/recolors.
+
+### Delete Label
+
+```
+DELETE /api/v1/sessions/{session_id}/labels/{label_id}
+```
+
+### Add / Remove Chat Label
+
+```
+POST   /api/v1/sessions/{session_id}/labels/{label_id}/chats/{chat_jid}
+DELETE /api/v1/sessions/{session_id}/labels/{label_id}/chats/{chat_jid}
+```
+
+Example:
+
+```bash
+curl -X POST http://localhost:3451/api/v1/sessions/my-session/labels/label-1/chats/5599@s.whatsapp.net \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Add / Remove Message Label
+
+```
+POST /api/v1/sessions/{session_id}/labels/{label_id}/messages
+POST /api/v1/sessions/{session_id}/labels/{label_id}/messages/remove
+```
+
+Request body:
+
+```json
+{
+  "chat_jid": "5599@s.whatsapp.net",
+  "message_id": "ABCD1234"
+}
+```
+
+---
+
+## Quick Replies
+
+Business canned responses (`quick_reply` `["quick_reply", id]`).
+
+### Upsert Quick Reply
+
+```
+PUT /api/v1/sessions/{session_id}/quick-replies
+```
+
+```json
+{
+  "id": "qr-id-1",
+  "shortcut": "/hello",
+  "message": "Hello! How can I help?",
+  "keywords": ["hi", "hello"],
+  "count": 0
+}
+```
+
+`count` is a usage counter (0 for new). Mirrors `WAWebQuickRepliesSync`.
+
+### Delete Quick Reply
+
+```
+DELETE /api/v1/sessions/{session_id}/quick-replies/{id}
+```
+
+---
+
+## Link Previews Setting
+
+Account-level `setting_disableLinkPreviews` (`["setting_disableLinkPreviews"]`).
+
+```
+POST /api/v1/sessions/{session_id}/settings/link-previews
+```
+
+```json
+{ "disabled": true }
+```
+
+Replicated to linked devices via App State. Does not block explicitly-requested previews.
+
+---
+
+# Source: /docs/api/newsletter.md
+
+# Newsletter
+
+Channel (newsletter) admin and follower operations — expanded in `whatsapp-rust 5e084b9b` (`feat(newsletter): #1249`). Previously only invite/forward was exposed via `/messages/*`; full lifecycle is now under `/newsletters/*`.
+
+Base: `/api/v1/sessions/{session_id}/newsletters`
+
+## List Subscribed
+
+```
+GET /api/v1/sessions/{session_id}/newsletters/subscribed
+```
+
+Returns newsletters the session is subscribed to (`client.newsletter().list_subscribed()`).
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/newsletters/subscribed \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Metadata
+
+```
+GET /api/v1/sessions/{session_id}/newsletters/{jid}/metadata
+```
+
+`jid` is the newsletter JID (`1203…@newsletter`).
+
+```bash
+curl http://localhost:3451/api/v1/sessions/my-session/newsletters/120363000000000000@newsletter/metadata \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Create
+
+```
+POST /api/v1/sessions/{session_id}/newsletters
+```
+
+### Request Body
+
+```json
+{
+  "name": "My Channel",
+  "description": "Optional",
+  "picture_b64": null
+}
+```
+
+## Join / Leave
+
+```
+POST /api/v1/sessions/{session_id}/newsletters/{jid}/join
+POST /api/v1/sessions/{session_id}/newsletters/{jid}/leave
+```
+
+## Delete
+
+```
+DELETE /api/v1/sessions/{session_id}/newsletters/{jid}
+```
+
+## Change Owner / Demote Admin
+
+```
+POST /api/v1/sessions/{session_id}/newsletters/{jid}/change-owner
+POST /api/v1/sessions/{session_id}/newsletters/{jid}/demote
+```
+
+### Request Body
+
+```json
+{ "user": "559999999999@s.whatsapp.net" }
+```
+
+## Admin Info
+
+```
+GET /api/v1/sessions/{session_id}/newsletters/{jid}/admin-info
+```
+
+## Followers
+
+```
+GET /api/v1/sessions/{session_id}/newsletters/{jid}/followers?limit=50
+```
+
+`limit` caps returned array (server side `get_followers(jid, count)`).
+
+## Mute
+
+```
+POST /api/v1/sessions/{session_id}/newsletters/{jid}/mute
+```
+
+```json
+{ "muted": true }
+```
+
+Toggles follower mute (`set_follower_mute`).
+
+---
+
+## Legacy: Invite Messages
+
+The invite helpers remain under `/messages/*` for sending invites as chat messages:
+
+- `POST /messages/newsletter-admin-invite`
+- `POST /messages/newsletter-follower-invite`
+- `POST /messages/newsletter-forward`
+
+These send a *message* with an invite; the endpoints above manage the channel itself.
+
+---
+
+# Source: /docs/api/scheduled.md
+
+# Scheduled Send
+
+Park a message now, dispatch it later. Added in v0.8.0.
+
+Every send endpoint under `/messages/*` (all ~34 of them — text,
+image, video, audio, document, sticker, location, contact, poll,
+buttons, list, interactive, cta-url, quick-reply, newsletter invites,
+order, invoice, payment flows, comment, scheduled-call, ...) accepts
+an optional `send_at` field alongside its normal body:
+
+```json
+{
+  "to": "628123456789",
+  "text": "Reminder: your appointment is tomorrow at 10am",
+  "send_at": "2026-08-01T09:00:00Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `send_at` | string (ISO-8601 UTC) | No | When to send. Omit or leave in the past/near-future to send immediately |
+
+## Immediate vs. parked
+
+Every send endpoint now returns a **unified response shape** that
+distinguishes the two outcomes:
+
+- **No `send_at`, or `send_at` within ~2 seconds of now** — sends
+  immediately through the normal send path. Response:
+
+  ```json
+  {
+    "status": "sent",
+    "message_id": "3EB0C8F1A2B3C4D5E6",
+    "timestamp": 1700000000,
+    "to": "628123456789@s.whatsapp.net"
+  }
+  ```
+
+- **`send_at` more than ~2 seconds in the future** — the request body
+  is stored in the `scheduled_messages` table instead of being sent,
+  and the endpoint answers right away:
+
+  ```json
+  {
+    "status": "pending",
+    "schedule_id": "b3f1c2a4-1234-4cde-9f00-abcdef123456",
+    "send_at": "2026-08-01T09:00:00Z"
+  }
+  ```
+
+The ~2 second grace window exists so a `send_at` that is technically
+in the future (clock skew, request latency) doesn't round-trip through
+the scheduler table for no reason — it just sends right away.
+
+## Dispatch
+
+A background loop polls for due rows (period from `SCHEDULER_POLL_MS`,
+default `1000` ms), claims each one (`pending` → `sending`, so a
+concurrent cancel or a second poller instance can't double-send it),
+and replays the stored request body through the same `execute_*` send
+core the immediate path uses. The row is then settled as `sent` (with
+the resulting `message_id`) or `failed` (with the error), and a
+`scheduled_sent` / `scheduled_failed` webhook event fires either way.
+
+Up to 50 due rows are claimed and dispatched per tick.
+
+## List Session Scheduled Messages
+
+```
+GET /api/v1/sessions/{session_id}/scheduled
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | No | Filter to one status: `pending`, `sending`, `sent`, `failed`, `cancelled` |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": "b3f1c2a4-1234-4cde-9f00-abcdef123456",
+      "session_id": "main",
+      "endpoint": "text",
+      "send_at": "2026-08-01T09:00:00Z",
+      "status": "pending",
+      "error": null,
+      "message_id": null,
+      "created_at": "2025-12-31T10:00:00Z",
+      "updated_at": "2025-12-31T10:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+`endpoint` is the internal send-endpoint key the body will be
+dispatched to (`text`, `image`, `cta-url`, ...), not a full path.
+`error` is only set once `status` is `failed`; `message_id` is only
+set once `status` is `sent`.
+
+## Cancel Scheduled Message
+
+Cancels a message that hasn't fired yet.
+
+```
+DELETE /api/v1/sessions/{session_id}/scheduled/{id}
+```
+
+### Response
+
+Same `ScheduledMessage` shape as the list endpoint, with `status`
+`cancelled`.
+
+Returns `400` if the message is no longer `pending` (already sent,
+failed, or cancelled) — only pending messages can be cancelled. If the
+scheduler claims the row for dispatch in the same instant as the
+cancel request, the cancel loses the race and also returns `400`;
+retrying is safe.
+
+## List All Scheduled Messages (fleet-wide)
+
+```
+GET /api/v1/scheduled
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session` | string | No | Restrict to this session id |
+| `status` | string | No | Filter to one status |
+
+### Response
+
+Same shape as [List Session Scheduled Messages](#list-session-scheduled-messages).
+
+:::note Interaction with blast
+[Blast](./blast.md) recipients never go through the scheduler: the
+worker forces `send_at` to `null` on every recipient body before
+dispatch, even if the original blast request had a top-level
+`send_at` (that field controls only when the *job* starts, not
+per-recipient scheduling).
+:::
+
+---
+
+# Source: /docs/api/blast.md
+
+# Blast (Bulk Send)
+
+Fan one message payload out to many recipients with pacing, dedup,
+retry, and a dead-letter queue. Added in v0.8.0.
+
+A blast job stores one message body plus a list of recipients, then a
+single background worker drains the list at a controlled pace,
+replaying the same send core used by regular and [scheduled](./scheduled.md)
+sends for each recipient.
+
+:::note Single sequential worker, by design
+The worker processes exactly one job, one recipient at a time, across
+the whole instance. WhatsApp rate-limits and bans aggressive senders,
+so running multiple blast workers in parallel would only multiply ban
+risk. Pacing comes entirely from each job's `delay_ms` / `jitter_ms`,
+not from concurrency.
+:::
+
+## Create Blast
+
+```
+POST /api/v1/sessions/{session_id}/blast
+```
+
+### Request Body
+
+```json
+{
+  "endpoint": "text",
+  "body": {
+    "to": "placeholder@s.whatsapp.net",
+    "text": "Hello from our monthly newsletter!"
+  },
+  "recipients": ["628123456789", "628987654321"],
+  "delay_ms": 1000,
+  "jitter_ms": 250,
+  "max_attempts": 3,
+  "dedup_across_jobs": false,
+  "send_at": "2026-08-01T09:00:00Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `endpoint` | string | Yes | Send-endpoint key — same keys used internally by [scheduled send](./scheduled.md#dispatch): `text`, `image`, `cta-url`, etc. |
+| `body` | object | Yes | Request payload matching that endpoint's normal request shape. `to` is required for shape validation but is overwritten per recipient at send time; any `send_at` inside it is ignored/forced null |
+| `recipients` | array of string | Yes | JIDs or bare phone numbers. Must not be empty |
+| `delay_ms` | integer | No | Base pause between sends, ms. Default `1000` |
+| `jitter_ms` | integer | No | Extra random `0..=jitter_ms` pause added per send. Default `0` |
+| `max_attempts` | integer | No | Send attempts per recipient before it lands in the DLQ. Default `3` |
+| `dedup_across_jobs` | boolean | No | Skip recipients any *previous* blast job on this session already delivered to (status `sent`). Default `false` |
+| `send_at` | string (ISO-8601 UTC) | No | Delayed job start — the job stays `pending` until this time, then the worker picks it up. Does not use the scheduler table; this is a separate, job-level gate |
+
+Recipients are validated and deduplicated at creation time, before any
+row is written:
+
+- Any unparseable recipient fails the whole request with `400` — no
+  partial jobs.
+- Duplicate entries **within** the `recipients` array are collapsed;
+  only the first occurrence is accepted, the rest are recorded as
+  `skipped_dup` recipients (visible, not silently dropped).
+- If `dedup_across_jobs` is true, recipients already marked `sent` by
+  an earlier blast job on the *same session* are also skipped as
+  `skipped_dup`.
+
+### Response
+
+```json
+{
+  "job_id": "b3f1c2a4-1234-4cde-9f00-abcdef123456",
+  "total": 1500,
+  "skipped_dup": 12,
+  "status": "pending"
+}
+```
+
+`total` is the recipient count actually accepted into the job (after
+dedup). `status` is always `pending` at creation — the worker picks it
+up on its own schedule.
+
+## Delivery semantics
+
+- **Pacing** — one send at a time, `delay_ms` plus a uniform random
+  `0..=jitter_ms` pause between every send. No other throttling.
+- **Retry** — a recipient send that fails with attempts remaining goes
+  back to `pending` and is retried on a later worker pass, with the
+  same per-send delay (no extra backoff — `max_attempts` is the only
+  cap).
+- **Dead-letter queue** — a recipient send that fails on its *last*
+  allowed attempt moves to `dlq` and stays there. It is not
+  automatically retried again; only [`/retry`](#retry-blast) requeues
+  DLQ recipients.
+- **Progress events** — a `blast_progress` webhook event fires every
+  25 successful sends, carrying the job's current counters.
+- **Completion** — once no `pending` recipients remain, the job closes
+  as `completed` (nothing in the DLQ) or `completed_with_failures` (at
+  least one DLQ recipient), and a `blast_completed` webhook event
+  fires with the final counters.
+- **Cancellation is cooperative** — the worker checks the job's status
+  before each batch and stops as soon as it's no longer `running`.
+  Any recipients not yet processed stay `pending`, so a job can be
+  resumed by nothing more than the worker claiming it again (it will
+  not resume once `cancelled`, though — see [Cancel Blast](#cancel-blast)).
+
+## List Session Blasts
+
+```
+GET /api/v1/sessions/{session_id}/blasts
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | No | Filter to one status: `pending`, `running`, `completed`, `completed_with_failures`, `cancelled`, `failed` |
+
+### Response
+
+```json
+{
+  "jobs": [
+    {
+      "id": "b3f1c2a4-1234-4cde-9f00-abcdef123456",
+      "session_id": "main",
+      "endpoint": "text",
+      "status": "running",
+      "options": {
+        "delay_ms": 1000,
+        "jitter_ms": 250,
+        "max_attempts": 3,
+        "dedup_across_jobs": false
+      },
+      "total": 1500,
+      "sent_count": 890,
+      "failed_count": 4,
+      "dlq_count": 2,
+      "skipped_dup_count": 12,
+      "send_at": null,
+      "created_at": "2025-12-31T10:00:00Z",
+      "started_at": "2025-12-31T10:00:05Z",
+      "finished_at": null
+    }
+  ],
+  "count": 1
+}
+```
+
+`failed_count` counts every failed attempt including ones that later
+succeeded on retry; `dlq_count` is only recipients that exhausted all
+attempts.
+
+## Get Blast
+
+Job detail with the same shape as one entry above.
+
+```
+GET /api/v1/sessions/{session_id}/blasts/{id}
+```
+
+## List Blast Recipients
+
+Paginated per-recipient status.
+
+```
+GET /api/v1/sessions/{session_id}/blasts/{id}/recipients
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | string | No | Filter to one status: `pending`, `sending`, `sent`, `failed`, `dlq`, `skipped_dup` |
+| `limit` | integer | No | Page size. Default `100`, max `1000` |
+| `offset` | integer | No | Rows to skip. Default `0` |
+
+### Response
+
+```json
+{
+  "recipients": [
+    {
+      "id": 42,
+      "recipient": "628123456789@s.whatsapp.net",
+      "status": "sent",
+      "attempts": 1,
+      "last_error": null,
+      "message_id": "3EB0C8F1A2B3C4D5E6",
+      "updated_at": "2025-12-31T10:00:12Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+## Cancel Blast
+
+Stops a job from sending further. Recipients not yet processed remain
+`pending` but the worker will not pick them up again once the job is
+`cancelled`.
+
+```
+POST /api/v1/sessions/{session_id}/blasts/{id}/cancel
+```
+
+Returns `400` if the job is already in a terminal state (`completed`,
+`completed_with_failures`, `cancelled`, `failed`).
+
+### Response
+
+Same `BlastJob` shape as [Get Blast](#get-blast), with `status`
+`cancelled`.
+
+## Retry Blast
+
+Requeues every `dlq` (and `failed`) recipient back to `pending` and
+reopens the job so the worker picks it up again.
+
+```
+POST /api/v1/sessions/{session_id}/blasts/{id}/retry
+```
+
+Returns `400` if the job is still `running` (cancel it first) or if
+there is nothing in the DLQ to retry.
+
+### Response
+
+Same `BlastJob` shape as [Get Blast](#get-blast).
+
+## List All Blasts (fleet-wide)
+
+```
+GET /api/v1/blasts
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session` | string | No | Restrict to this session id |
+| `status` | string | No | Filter to one status |
+
+### Response
+
+Same shape as [List Session Blasts](#list-session-blasts).
+
+---
+
+# Source: /docs/api/search.md
+
+# Message Search
+
+Full-text search over stored message history, added in v0.8.0. Two
+endpoints: per-session and fleet-wide across every session.
+
+## History ingestion
+
+Search only finds what has been indexed. Every message is captured
+best-effort in both directions:
+
+- Incoming messages are indexed from the live event stream as they
+  arrive.
+- Outgoing messages are indexed right after each send resolves — this
+  covers HTTP sends, [scheduled](./scheduled.md) sends, and
+  [blast](./blast.md) sends alike, since they all funnel through the
+  same send core.
+
+Indexing never blocks or fails a send/receive: a failed insert is
+logged and swallowed. Set `MESSAGE_HISTORY_ENABLED=false` to turn
+ingestion off entirely — existing rows remain searchable, but nothing
+new gets indexed.
+
+:::note Only text is indexed
+The searchable body is the message text, or the caption for media
+messages. Content-free types (stickers, locations, etc.) have a null
+`body` and are not matchable by text.
+:::
+
+## Search Session Messages
+
+```
+GET /api/v1/sessions/{session_id}/messages/search?q=
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `q` | string | Yes | Free-form search text. Empty (after trimming) returns `400` |
+| `limit` | integer | No | Page size. Default `20`, max `200` |
+| `offset` | integer | No | Rows to skip. Default `0` |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": 42,
+      "message_id": "3EB0C8F1A2B3C4D5E6",
+      "session_id": "main",
+      "chat_jid": "628123456789@s.whatsapp.net",
+      "sender_jid": "628123456789@s.whatsapp.net",
+      "direction": "in",
+      "msg_type": "text",
+      "body": "are we still on for lunch tomorrow?",
+      "snippet": "are we still on for <b>lunch</b> tomorrow?",
+      "msg_timestamp": "2026-07-21 10:30:00"
+    }
+  ],
+  "count": 1
+}
+```
+
+Results are newest first. `count` is the number of hits in this page,
+not the total match count.
+
+## Search All Messages (fleet-wide)
+
+Same as above but searches across every session on the instance, with
+an optional session filter.
+
+```
+GET /api/v1/messages/search?q=
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `q` | string | Yes | Free-form search text |
+| `session` | string | No | Restrict results to this session id. All sessions when omitted |
+| `limit` | integer | No | Page size. Default `20`, max `200` |
+| `offset` | integer | No | Rows to skip. Default `0` |
+
+### Response
+
+Same shape as [Search Session Messages](#search-session-messages).
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Internal row id |
+| `message_id` | string | WhatsApp message id |
+| `session_id` | string | Session the message belongs to |
+| `chat_jid` | string | Chat the message belongs to (DM partner or group JID) |
+| `sender_jid` | string | Actual sender; differs from `chat_jid` inside groups. Empty for outgoing messages (the sender is the session's own account and isn't tracked here) |
+| `direction` | string | `in` (received) or `out` (sent by this gateway) |
+| `msg_type` | string | `text`, `image`, `video`, `audio`, `ptt`, `document`, `sticker`, `location`, `contact`, ... |
+| `body` | string \| null | Message body, or caption for media. Null for content-free types |
+| `snippet` | string \| null | Highlighted match context — see below |
+| `msg_timestamp` | string | `%Y-%m-%d %H:%M:%S` UTC text |
+
+## Backend degrade ladder
+
+Search is implemented per database backend, each with its own
+best-effort fallback so a broken or unavailable full-text index never
+turns into a hard error — it just degrades to a plainer match:
+
+| Backend | Primary strategy | Snippet support | Fallback (on error) |
+|---|---|---|---|
+| **SQLite** | FTS5 virtual table (`messages_fts`), external content synced on insert | Yes — `snippet()` with `<b>…</b>` highlights | Plain `LIKE '%…%'` scan |
+| **Postgres** | Generated `body_tsv` tsvector column (`simple` config — chats mix languages, so stemming would hurt), GIN index, `plainto_tsquery` | Yes — `ts_headline` | `ILIKE '%…%'` scan |
+| **MySQL** | `FULLTEXT` index, `MATCH … AGAINST` in natural language mode | No — snippet is always `null` | `LIKE '%…%'` scan |
+
+`snippet` is therefore only ever populated on SQLite and Postgres, and
+only while their primary full-text path is healthy. If either falls
+back to its `LIKE`/`ILIKE` path, `snippet` is `null` for that response
+even though `body` still contains the match.
+
+:::warning MySQL short-word gotcha
+MySQL's default `ft_min_word_len` is 4, so `FULLTEXT` silently drops
+shorter tokens from the index — a query for `"hi"` may return nothing
+even though matching rows exist. The `LIKE` fallback only triggers on
+query **errors**, not on empty result sets, so this isn't
+self-correcting. Raise `ft_min_word_len` and rebuild the index if
+short-word search matters for your deployment.
+:::
+
+:::note SQLite FTS join gotcha (implementation detail)
+The SQLite path joins `messages_fts` and `messages`, which both expose
+columns with the same names (`message_id`, `session_id`, `body`).
+Every column in that query is explicitly qualified (`m.…` / `f.…`) —
+an unqualified column fails to prepare with `ambiguous column name`
+and silently falls back to the snippet-less `LIKE` path. Not something
+a caller needs to do anything about, but explains why a schema change
+here needs care.
+:::
+
+---
+
+# Source: /docs/api/tokens.md
+
+# Tokens
+
+Mint, list, and revoke bearer tokens scoped to a specific set of sessions.
+Fleet-wide (mint/list/revoke require the instance's `SUPERADMIN_TOKEN`, or
+an unscoped superadmin JWT — a minted token cannot mint, list, or revoke
+other tokens).
+
+Every waxum instance already accepts `SUPERADMIN_TOKEN` (or an unscoped
+JWT), which can read/send/delete on every session on the instance. These
+endpoints are for the common multi-tenant case: hand a specific app or
+customer a credential that can only touch *their* session(s), and pull
+it back later without rotating the instance-wide secret.
+
+## Mint Token
+
+```
+POST /api/v1/tokens
+```
+
+### Request Body
+
+```json
+{
+  "name": "customer-mobile-app",
+  "session_ids": ["my-session"],
+  "expires_in_hours": 720
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | No | Human-readable label, shown in `GET /tokens`. Not security-relevant. |
+| `session_ids` | string[] | Yes | Sessions this token may access. Must be non-empty. |
+| `expires_in_hours` | integer | No | Token lifetime. Defaults to 720 (30 days). |
+
+### Response
+
+```json
+{
+  "id": "b6b3f8b0-...",
+  "token": "eyJhbGciOi...",
+  "name": "customer-mobile-app",
+  "session_ids": ["my-session"],
+  "expires_at": 1789123456
+}
+```
+
+`token` is the bearer value — store it now. It is never returned again;
+`GET /tokens` only shows metadata. `id` is the token's identifier, used to
+revoke it later.
+
+A token minted here behaves like the instance's `SUPERADMIN_TOKEN` for
+every endpoint under its bound `session_ids` — same `Authorization: Bearer
+<token>` header — but a request to any *other* session, or to a fleet-wide
+endpoint (`GET /sessions`, `POST /sessions/purge`, `POST /tokens`, etc.),
+gets `403 Forbidden`. It also cannot log into the console — the console is
+a full-fleet admin UI, and a scoped token is deliberately not a superadmin
+credential in that sense.
+
+`404` if any `session_id` in the request doesn't exist on this instance;
+`400` if `session_ids` is empty.
+
+## List Tokens
+
+```
+GET /api/v1/tokens
+```
+
+### Response
+
+```json
+{
+  "tokens": [
+    {
+      "id": "b6b3f8b0-...",
+      "name": "customer-mobile-app",
+      "session_ids": ["my-session"],
+      "created_at": "2026-07-28 10:00:00",
+      "expires_at": "2026-08-27 10:00:00",
+      "revoked": false
+    }
+  ],
+  "count": 1
+}
+```
+
+Never includes the bearer value — only `POST /tokens`'s response does,
+once, at mint time.
+
+## Revoke Token
+
+```
+POST /api/v1/tokens/{id}/revoke
+```
+
+Immediately invalidates the token — every request against it starts
+returning `403` right away, not just after its `expires_in_hours` lapses.
+Use the `id` from the mint response or `GET /tokens`, not the bearer value
+itself.
+
+`404` if the id doesn't exist or was already revoked.
+
+## How scoping is enforced
+
+A minted token's JWT carries only an opaque `jti` (token id) — the actual
+session bindings and revocation status live server-side in waxum's own
+database, looked up on every request. This is why revoking a token takes
+effect immediately (no need to wait for the JWT to expire) and why binding
+changes don't require reissuing the token itself.
+
+If you don't need per-app isolation — every caller can be trusted with
+every session on the instance — the plain `SUPERADMIN_TOKEN` remains the
+simplest option; these endpoints are additive; nothing about existing
+`SUPERADMIN_TOKEN`/unscoped-JWT behavior changes.
+
+---
