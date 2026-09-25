@@ -7,6 +7,16 @@ const config: Config = {
   tagline: 'WhatsApp REST API Gateway built with Rust',
   favicon: 'img/favicon.png',
 
+  headTags: [
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'google-site-verification',
+        content: 'W-mxJQ6O4SxwVmtJ3AdZSTKUJdU_v9cp1D2nRWWNX3g',
+      },
+    },
+  ],
+
   future: {
     v4: true,
   },
