@@ -290,6 +290,7 @@ Message-event envelopes carry one extra top-level field (v0.12.0+):
     "from": "628123456789@s.whatsapp.net",
     "from_phone": "628123456789",
     "chat": "628123456789@s.whatsapp.net",
+    "chat_phone": "628123456789",
     "message_id": "3EB0ABC123...",
     "is_from_me": false,
     "push_name": "Sender",
@@ -332,6 +333,17 @@ specifically so consumers don't have to do this themselves:
 `from_phone: null` is a real "not known yet" outcome, not a bug —
 build fallback handling for it if your integration depends on the
 phone number.
+
+#### `chat` vs `chat_phone` (v0.12.9+)
+
+`chat_phone` is the same best-effort resolution as `from_phone`, but
+for `chat` instead of `from`. This matters most for messages you sent
+via the API (`is_from_me: true`): `from`/`from_phone` there are your
+own session's number, and `chat` — the recipient — is the field you
+actually want a phone number for. On a LID-only recipient, `chat` is
+a `@lid` value and `chat_phone` follows the same "resolved if known,
+otherwise `null`" rules as `from_phone`. For a group chat, `chat` is
+a `@g.us` JID and `chat_phone` is always `null`.
 
 ### Location Message (v0.6.2+)
 
