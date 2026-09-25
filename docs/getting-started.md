@@ -1,5 +1,12 @@
 ---
 sidebar_position: 1
+description: "Quick overview of Waxum's multi-session WhatsApp REST gateway: QR/pair-code auth, message types, webhooks, NATS, JWT auth, and Swagger UI."
+keywords:
+  - getting started
+  - WhatsApp API
+  - multi-session
+  - webhooks
+  - Swagger UI
 ---
 
 # Getting Started

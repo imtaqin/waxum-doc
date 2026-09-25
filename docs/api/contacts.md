@@ -1,5 +1,12 @@
 ---
 sidebar_position: 3
+description: Look up stored contacts, check WhatsApp availability, fetch profile info, and save or rename a contact in the session's address book.
+keywords:
+  - contacts
+  - is_on_whatsapp
+  - save contact
+  - profile picture
+  - LID resolve
 ---
 
 # Contacts

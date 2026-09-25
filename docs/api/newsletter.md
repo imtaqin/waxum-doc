@@ -1,5 +1,11 @@
 ---
 sidebar_position: 10
+description: Full WhatsApp channel (newsletter) lifecycle -- list, create, join, leave, admin and follower invites, and metadata.
+keywords:
+  - WhatsApp channels
+  - newsletter
+  - admin invite
+  - follower invite
 ---
 
 # Newsletter

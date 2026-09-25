@@ -1,5 +1,12 @@
 ---
 sidebar_position: 4
+description: List, create, and manage WhatsApp groups -- participants, admins, subject, description, settings, and invite links.
+keywords:
+  - groups
+  - participants
+  - admin
+  - invite link
+  - group settings
 ---
 
 # Groups

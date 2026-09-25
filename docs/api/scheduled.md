@@ -1,5 +1,10 @@
 ---
 sidebar_position: 13
+description: Schedule any WhatsApp send endpoint for later delivery with an optional send_at timestamp, list, and cancel scheduled sends.
+keywords:
+  - scheduled messages
+  - delayed send
+  - send_at
 ---
 
 # Scheduled Send

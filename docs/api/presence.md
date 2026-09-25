@@ -1,5 +1,11 @@
 ---
 sidebar_position: 6
+description: Set and subscribe to WhatsApp online/offline presence, and send typing or recording chat-state indicators.
+keywords:
+  - presence
+  - typing indicator
+  - chat state
+  - online status
 ---
 
 # Presence & Chat State

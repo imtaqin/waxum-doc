@@ -1,5 +1,10 @@
 ---
 sidebar_position: 12
+description: Full-text search over indexed WhatsApp message history, scoped to one session or across the entire fleet.
+keywords:
+  - message search
+  - full-text search
+  - fleet search
 ---
 
 # Message Search

@@ -1,5 +1,10 @@
 ---
 sidebar_position: 11
+description: Create and assign WhatsApp chat labels, and manage quick-reply shortcuts via WhatsApp's App State Sync.
+keywords:
+  - labels
+  - quick replies
+  - app state sync
 ---
 
 # Labels & Quick Replies

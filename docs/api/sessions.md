@@ -1,5 +1,13 @@
 ---
 sidebar_position: 1
+description: Create, list, pair, connect, disconnect, and delete WhatsApp sessions -- each session is one independently connected WhatsApp account.
+keywords:
+  - sessions
+  - QR pairing
+  - pair code
+  - connect
+  - disconnect
+  - multi-session
 ---
 
 # Sessions

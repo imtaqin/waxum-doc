@@ -1,5 +1,11 @@
 ---
 sidebar_position: 3
+description: How to set Waxum's superadmin token via CLI flag, environment variable, or config, and how JWT bearer auth protects every API endpoint.
+keywords:
+  - authentication
+  - JWT
+  - bearer token
+  - superadmin token
 ---
 
 # Authentication

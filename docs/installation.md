@@ -1,5 +1,13 @@
 ---
 sidebar_position: 2
+description: Install Waxum via prebuilt binary, Docker, or from source, with zero-config SQLite storage or an optional Postgres/MySQL DATABASE_URL.
+keywords:
+  - install
+  - docker
+  - binary release
+  - SQLite
+  - PostgreSQL
+  - MySQL
 ---
 
 # Installation

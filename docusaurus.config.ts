@@ -18,7 +18,7 @@ const config: Config = {
   url: 'https://waxum.imtaqin.id',
   baseUrl: '/',
 
-  organizationName: 'fdciabdul',
+  organizationName: 'imtaqin',
   projectName: 'waxum-doc',
 
   onBrokenLinks: 'throw',
@@ -47,7 +47,11 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/imtaqin/waxum/tree/main/documentation/',
+          editUrl: 'https://github.com/imtaqin/waxum-doc/tree/main/docs/',
+        },
+        sitemap: {
+          changefreq: 'weekly',
+          priority: 0.5,
         },
         blog: false,
         theme: {
@@ -58,7 +62,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/social-card.jpg',
+    image: 'img/banner.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },

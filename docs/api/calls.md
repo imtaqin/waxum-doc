@@ -1,5 +1,13 @@
 ---
 sidebar_position: 9
+description: Signal, place, and manage WhatsApp voice/video calls -- ring, accept, reject, terminate, plus TTS and audio-stream call playback.
+keywords:
+  - WhatsApp calls
+  - VoIP
+  - ring
+  - TTS call
+  - voice call
+  - video call
 ---
 
 # Calls
