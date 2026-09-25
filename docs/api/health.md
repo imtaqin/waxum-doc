@@ -1,5 +1,11 @@
 ---
 sidebar_position: 10
+description: Kubernetes-style /livez and /readyz health probes plus a Prometheus /metrics endpoint for monitoring a Waxum instance.
+keywords:
+  - health check
+  - liveness probe
+  - readiness probe
+  - Prometheus metrics
 ---
 
 # Health & Liveness

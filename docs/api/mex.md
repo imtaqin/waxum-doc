@@ -1,5 +1,10 @@
 ---
 sidebar_position: 9
+description: Execute raw WhatsApp internal GraphQL (MEX) queries and mutations directly against WhatsApp's Meta Experience API.
+keywords:
+  - MEX
+  - GraphQL
+  - WhatsApp internal API
 ---
 
 # MEX / GraphQL

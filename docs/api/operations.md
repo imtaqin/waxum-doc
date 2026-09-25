@@ -1,5 +1,11 @@
 ---
 sidebar_position: 10
+description: Spam reporting, trust-contact tokens, auto-reconnect, history sync config, pause/resume, and app-state resync operations.
+keywords:
+  - spam report
+  - trust tokens
+  - auto-reconnect
+  - app-state resync
 ---
 
 # Operations

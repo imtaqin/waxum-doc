@@ -1,5 +1,9 @@
 ---
 sidebar_position: 12
+description: List the WhatsApp bot directory available to a session, mirroring WhatsApp Web's periodic bot-list refresh.
+keywords:
+  - WhatsApp bots
+  - bot directory
 ---
 
 # Bots

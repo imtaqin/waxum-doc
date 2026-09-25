@@ -1,5 +1,12 @@
 ---
 sidebar_position: 5
+description: Register HTTP webhooks to receive real-time WhatsApp events, HMAC-SHA256 signed, with automatic retries and a circuit breaker.
+keywords:
+  - webhooks
+  - HMAC signature
+  - retries
+  - circuit breaker
+  - dead-letter queue
 ---
 
 # Webhooks

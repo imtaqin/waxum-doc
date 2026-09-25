@@ -1,5 +1,11 @@
 ---
 sidebar_position: 14
+description: Bulk-send one message to many WhatsApp recipients with pacing, deduplication, retries, and a dead-letter queue.
+keywords:
+  - bulk send
+  - blast
+  - mass messaging
+  - dead-letter queue
 ---
 
 # Blast (Bulk Send)

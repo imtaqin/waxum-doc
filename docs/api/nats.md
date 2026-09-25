@@ -1,5 +1,11 @@
 ---
 sidebar_position: 11
+description: Stream WhatsApp events and queue outbound messages through optional NATS JetStream integration for durable delivery.
+keywords:
+  - NATS
+  - JetStream
+  - event streaming
+  - message queue
 ---
 
 # NATS JetStream

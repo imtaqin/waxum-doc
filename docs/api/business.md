@@ -1,5 +1,12 @@
 ---
 sidebar_position: 9
+description: Fetch WhatsApp Business catalog products, collections, and orders via the internal w:biz IQ and MEX APIs.
+keywords:
+  - WhatsApp Business
+  - catalog
+  - collections
+  - orders
+  - w:biz
 ---
 
 # Business

@@ -1,5 +1,11 @@
 ---
 sidebar_position: 15
+description: Mint, list, and revoke bearer tokens scoped to specific WhatsApp sessions for secure multi-tenant API access.
+keywords:
+  - API tokens
+  - scoped tokens
+  - multi-tenant
+  - bearer token
 ---
 
 # Tokens

@@ -1,5 +1,10 @@
 ---
 sidebar_position: 4
+description: Use Waxum's built-in Swagger UI at /swagger-ui to browse and test every REST endpoint, backed by a live OpenAPI JSON spec.
+keywords:
+  - Swagger UI
+  - OpenAPI
+  - API explorer
 ---
 
 # Swagger UI

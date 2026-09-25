@@ -1,5 +1,10 @@
 ---
 sidebar_position: 8
+description: Read a connected WhatsApp account's privacy settings -- last seen, profile photo, status, and group-add permissions.
+keywords:
+  - privacy settings
+  - last seen
+  - profile visibility
 ---
 
 # Privacy

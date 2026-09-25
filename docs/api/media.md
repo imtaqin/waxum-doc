@@ -1,5 +1,12 @@
 ---
 sidebar_position: 7
+description: Upload media to WhatsApp servers for reuse in messages, and download previously received media by its media key.
+keywords:
+  - media upload
+  - media download
+  - image
+  - video
+  - document
 ---
 
 # Media

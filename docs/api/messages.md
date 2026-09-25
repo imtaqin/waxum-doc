@@ -1,5 +1,13 @@
 ---
 sidebar_position: 2
+description: Send WhatsApp text, media, location, contact, poll, button, list, and interactive messages, with LID auto-resolve for privacy-migrated contacts.
+keywords:
+  - send message
+  - media message
+  - poll
+  - buttons
+  - list message
+  - LID
 ---
 
 # Messages

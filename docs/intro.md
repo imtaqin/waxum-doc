@@ -1,6 +1,13 @@
 ---
 sidebar_position: 1
 slug: /
+description: Waxum is a Rust-built WhatsApp REST API gateway with multi-session support, QR/pair-code auth, HMAC-signed webhooks, and NATS JetStream event streaming.
+keywords:
+  - WhatsApp API
+  - REST gateway
+  - Rust
+  - multi-session
+  - webhooks
 ---
 
 # Introduction
