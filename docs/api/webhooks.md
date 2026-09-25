@@ -298,6 +298,8 @@ Message-event envelopes carry one extra top-level field (v0.12.0+):
     "from_phone": "628123456789",
     "chat": "628123456789@s.whatsapp.net",
     "chat_phone": "628123456789",
+    "quoted_message_id": null,
+    "quoted_sender_jid": null,
     "message_id": "3EB0ABC123...",
     "is_from_me": false,
     "push_name": "Sender",
@@ -351,6 +353,22 @@ actually want a phone number for. On a LID-only recipient, `chat` is
 a `@lid` value and `chat_phone` follows the same "resolved if known,
 otherwise `null`" rules as `from_phone`. For a group chat, `chat` is
 a `@g.us` JID and `chat_phone` is always `null`.
+
+#### `quoted_message_id` / `quoted_sender_jid` (v0.12.9+)
+
+Present when the incoming message is a WhatsApp reply (quoting an
+earlier message). `quoted_message_id` is the quoted message's id
+(`ContextInfo.stanzaId`); `quoted_sender_jid` is who sent it
+(`ContextInfo.participant`). Both are `null` when the message is not a
+reply, and `quoted_sender_jid` can be `null` even on a reply if
+WhatsApp omitted the field on the wire.
+
+Neither is resolved against locally stored history — this webhook
+event carries only what WhatsApp attached to the message itself, not a
+join against your own message log. Look `quoted_message_id` up against
+[chat history](./messages.md#list-chat-messages) (which carries the
+same two fields on every row) or your own store if you need the quoted
+message's actual content.
 
 ### Location Message (v0.6.2+)
 

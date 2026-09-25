@@ -1506,8 +1506,65 @@ cursor and page from the top again.
 :::
 
 For a single chat's history instead of the whole session, use the
-chat-scoped sibling `GET /api/v1/sessions/{session_id}/messages/chat/{chat_jid}`
-(`limit`/`offset` pagination, same message shape).
+chat-scoped sibling below.
+
+## List Chat Messages
+
+One chat's history, newest first, `limit`/`offset` pagination — no
+search term required. Backed by the same indexed `messages` table as
+[Search](./search.md), so unlike [List Session
+Messages](#list-session-messages) above it carries the sender's
+`push_name`, a `media` download pointer for media messages, and reply
+context (`quoted_message_id`/`quoted_sender_jid`) when the message is
+a WhatsApp reply.
+
+```
+GET /api/v1/sessions/{session_id}/messages/chat/{chat_jid}?limit=<n>&offset=<n>
+```
+
+### Query Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `limit` | integer | No | Page size. Default `20`, max `200` |
+| `offset` | integer | No | Rows to skip. Default `0` |
+
+### Response
+
+```json
+{
+  "messages": [
+    {
+      "id": 422,
+      "message_id": "AC3172C788C4F5BD8812D84FFA0D3641",
+      "session_id": "main",
+      "chat_jid": "628123456789@s.whatsapp.net",
+      "sender_jid": "628123456789@s.whatsapp.net",
+      "direction": "in",
+      "msg_type": "text",
+      "body": "Kalo yg ini mas?",
+      "snippet": null,
+      "msg_timestamp": "2026-09-24 12:25:29",
+      "push_name": "Jane Doe",
+      "media": null,
+      "quoted_message_id": "AC91A5120572D04E2ABE9E7DE352C693",
+      "quoted_sender_jid": "628123456789@s.whatsapp.net"
+    }
+  ],
+  "count": 1
+}
+```
+
+`quoted_message_id` and `quoted_sender_jid` are `null` when the message
+is not a reply. `quoted_message_id` alone tells you *what* was quoted
+(look it up against this same chat's history, or via [Search](./search.md),
+to resolve its own `body`/`media`); `quoted_sender_jid` is who sent it.
+Both come straight off the wire's `ContextInfo` — no resolution against
+locally stored history is attempted, so a quote of a message from
+before this session's history began still round-trips the id even
+though nothing in your own history matches it.
+
+All other fields match [the search response](./search.md#response-fields).
 
 ---
 
