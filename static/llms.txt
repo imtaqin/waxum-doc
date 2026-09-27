@@ -1,10 +1,11 @@
 # waxum
 
-> REST API gateway for WhatsApp. Multi-session, webhook-driven, backed by a Rust/Tokio runtime on top of the whatsapp-rust multi-device client.
+> REST API gateway for WhatsApp. Multi-session, webhook-driven, backed by a Rust/Tokio runtime. Each session runs on either the whatsapp-rust multi-device client (QR/pair code) or Meta's official WhatsApp Cloud API, behind the same REST surface.
 
 waxum exposes WhatsApp's messaging, group, presence, and call signalling
-over an HTTP+JSON API. Sessions are QR- or phone-code paired, isolated
-per storage directory, and persisted to Postgres, MySQL, or SQLite. All
+over an HTTP+JSON API. Sessions are QR- or phone-code paired (provider
+`whatsapp_web`) or attached to a Meta WABA (provider `whatsapp_cloud`),
+isolated per storage directory, and persisted to Postgres, MySQL, or SQLite. All
 inbound WA events fan out to registered webhooks (HMAC-SHA256 signed).
 
 Auth is Bearer JWT. Base URL `/api/v1`. Swagger UI at `/swagger-ui`.
@@ -26,7 +27,7 @@ Auth is Bearer JWT. Base URL `/api/v1`. Swagger UI at `/swagger-ui`.
 - [Presence](https://waxum.imtaqin.id/docs/api/presence): subscribe, send composing/paused/recording.
 - [Media](https://waxum.imtaqin.id/docs/api/media): upload from URL or multipart, download by media_key.
 - [Calls](https://waxum.imtaqin.id/docs/api/calls): ring (audio/video kind), reject, accept, terminate. Signalling only — no media plane.
-- [Webhooks](https://waxum.imtaqin.id/docs/api/webhooks): register, list, delete, re-enable, HMAC signature, retries, circuit breaker + auto-disable after 100 consecutive failures; message events carry both `from`/`from_phone` and `chat`/`chat_phone` so an outbound send's recipient resolves to a plain phone number too.
+- [Webhooks](https://waxum.imtaqin.id/docs/api/webhooks): register, list, delete, re-enable, HMAC signature, retries, circuit breaker + auto-disable after 100 consecutive failures; a message the server redelivers (offline replay, then live) is forwarded once per session; message events carry both `from`/`from_phone` and `chat`/`chat_phone` so an outbound send's recipient resolves to a plain phone number too.
 - [Health](https://waxum.imtaqin.id/docs/api/health): `/livez` (static), `/readyz` (DB probe + session count), `/health` (legacy alias), `/metrics` (Prometheus).
 - [Privacy](https://waxum.imtaqin.id/docs/api/privacy): read receipts, last seen, online, profile visibility, groups add.
 - [Mex](https://waxum.imtaqin.id/docs/api/mex): raw MEX GraphQL passthrough.
@@ -40,6 +41,7 @@ Auth is Bearer JWT. Base URL `/api/v1`. Swagger UI at `/swagger-ui`.
 - [Blast](https://waxum.imtaqin.id/docs/api/blast): fan one payload out to many recipients with pacing, dedup, retry, and a dead-letter queue.
 - [Message Search](https://waxum.imtaqin.id/docs/api/search): full-text search over stored message history, per-session and fleet-wide.
 - [Tokens](https://waxum.imtaqin.id/docs/api/tokens): mint, list, and revoke bearer tokens scoped to a specific set of sessions.
+- [Cloud API](https://waxum.imtaqin.id/docs/api/cloud): run a session on Meta's official WhatsApp Cloud API. Embedded Signup and BSP credit-line sharing; the same `/messages/*` routes plus templates, Flows (incl. an encrypted Data Exchange endpoint that forwards to your backend), commerce/catalog, payments (IN/SG); template, QR code, phone number, business profile, blocked user and webhook subscription management; analytics and billing. Meta webhooks are normalized into the same `message` event, and delivery/payment statuses arrive as structured `receipt` events.
 
 ## Runtime
 
