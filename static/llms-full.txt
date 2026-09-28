@@ -4859,6 +4859,37 @@ join against your own message log. Look `quoted_message_id` up against
 same two fields on every row) or your own store if you need the quoted
 message's actual content.
 
+#### Button and list replies (v0.13.1+)
+
+When a user taps a button or picks a list row, the event says which
+option they chose:
+
+```json
+{
+  "message_type": "interactive_response",
+  "text": "✅ Setuju",
+  "selected_id": "approve",
+  "selected_text": "✅ Setuju",
+  "native_flow": { "name": "quick_reply", "params": { "id": "approve" } },
+  "quoted_message_id": "3EB0D7A57AA45E7D72FE2B"
+}
+```
+
+| `message_type` | Sent when the user replies to | `selected_id` | `selected_text` |
+|---|---|---|---|
+| `interactive_response` | [Quick reply](./messages.md#send-quick-reply-buttons), native-flow list, or a WhatsApp Flow | Button or row `id` from the reply's `params_json` | Label shown on the reply |
+| `buttons_response` | Legacy buttons | Button id | Button label |
+| `list_response` | Legacy list | Row id | Row title |
+| `template_button_reply` | A template's quick-reply button | Button id | Button label |
+
+- **`text`** is set to the chosen label, or the id when there is no label. Consumers that only read `text` still see the choice.
+- **`quoted_message_id`** is your interactive message, so you can tell which prompt was answered.
+- **`native_flow`** is only set for `interactive_response`. `params` is the reply's `params_json`, parsed. For a submitted WhatsApp Flow it holds the whole form, and `selected_id` may be `null`.
+- All three fields are `null` on ordinary messages.
+
+Before v0.13.1 these replies arrived as `message_type: "unknown"` with
+`text: null`.
+
 ### Location Message (v0.6.2+)
 
 When `message_type` is `location` or a live location is received, the
