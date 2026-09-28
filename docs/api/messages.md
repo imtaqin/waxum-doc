@@ -1513,7 +1513,7 @@ chat-scoped sibling below.
 One chat's history, newest first, `limit`/`offset` pagination — no
 search term required. Backed by the same indexed `messages` table as
 [Search](./search.md), so unlike [List Session
-Messages](#list-session-messages) above it carries the sender's
+Messages](#list-session-messages-history) above it carries the sender's
 `push_name`, a `media` download pointer for media messages, and reply
 context (`quoted_message_id`/`quoted_sender_jid`) when the message is
 a WhatsApp reply.

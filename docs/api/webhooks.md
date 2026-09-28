@@ -285,6 +285,18 @@ Message-event envelopes carry one extra top-level field (v0.12.0+):
 |-------|-------------|
 | `offline` | `true` when the message was redelivered from the disconnect window (received while the session was offline, replayed on reconnect); `false` for live arrivals |
 
+`offline` only says *how* a message reached waxum. It is not a filter.
+Handle every `message` event regardless of it. Filtering on
+`offline: true` would drop every live message.
+
+WhatsApp sometimes delivers the same message twice: once in the offline
+replay, and again live when the phone comes online. Since v0.13.0,
+waxum forwards each message only once per session, keyed on chat and
+`message_id`, over the last 4096 messages. This memory is lost on
+restart, so a redelivery that spans a restart can still repeat. If you
+need exactly-once processing, also deduplicate on `data.message_id` on
+your side.
+
 ### Message Event
 
 ```json
