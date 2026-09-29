@@ -28,6 +28,11 @@ integration mostly just needs a different session id to switch.
 Attach Cloud API credentials to a session and flip its provider to
 `whatsapp_cloud`.
 
+From the built-in console at `/` (v0.13.2+), **New Cloud API session**
+creates the session and attaches credentials in one step. The session's
+page then shows the webhook callback URL and the Flow endpoint URL to
+paste into your Meta app.
+
 ```
 POST /api/v1/sessions/{session_id}/cloud/connect
 ```
