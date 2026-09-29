@@ -198,7 +198,28 @@ GET /api/v1/sessions/{session_id}/status
   "socket_alive": true,
   "paused": false,
   "phone_number": "628123456789",
-  "push_name": "John Doe"
+  "push_name": "John Doe",
+  "diagnostics": {
+    "last_data_received_at": 1759140000,
+    "client_frames_received": 5120,
+    "client_messages_received": 212,
+    "client_messages_suppressed_duplicate": 0,
+    "client_events_dropped": 0,
+    "client_reconnects": 1,
+    "client_reconnect_errors": 0,
+    "messages_forwarded": 212,
+    "last_message_forwarded_at": 1759139990,
+    "webhooks": [
+      {
+        "id": "wh_1",
+        "url": "https://example.com/hook",
+        "enabled": true,
+        "receives_messages": true,
+        "circuit_open": false,
+        "consecutive_failures": 0
+      }
+    ]
+  }
 }
 ```
 
@@ -206,6 +227,22 @@ GET /api/v1/sessions/{session_id}/status
 |-------|-------------|
 | `socket_alive` | Raw socket liveness (v0.12.0+). Distinct from `is_logged_in`: a cached `logged_in` status can outlive a dead socket ("limbo"), and a live socket can precede login during QR/pair flows. |
 | `paused` | `true` after [Pause Session](./operations.md#pause-session) — the session is deliberately offline until resumed. |
+| `diagnostics` | Where inbound traffic stops (v0.13.2+); see below. |
+
+#### Diagnosing "connected but no webhooks"
+
+`diagnostics` follows a message from the socket to your webhook, so
+you can see which step stopped:
+
+| Check | Means |
+|-------|-------|
+| `last_data_received_at` is old | the socket has gone quiet |
+| `client_messages_received` doesn't grow while messages arrive | the client isn't decrypting or dispatching |
+| `client_messages_received` grows but `messages_forwarded` doesn't | waxum isn't forwarding |
+| `messages_forwarded` grows but your server gets nothing | look at `webhooks[]`: `enabled: false` (auto-disabled, [re-enable it](./webhooks.md#re-enable-webhook)), `circuit_open: true`, or `receives_messages: false` |
+
+- **`client_*` fields** come from the WhatsApp client. They are `null` when no client is running in this process, and reset whenever it is rebuilt (e.g. by connect).
+- **`messages_forwarded`** counts since the process started.
 
 ### Status Values
 

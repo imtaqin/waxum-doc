@@ -81,6 +81,30 @@ POST /api/v1/sessions/{session_id}/messages/text
 | `text` | string | Yes | Message text |
 | `mentions` | array | No | JIDs to @mention (v0.12.0+). Each entry may be a full JID or a bare phone number. Any mention whose `@user` form is missing from `text` is appended so clients render the mention highlight |
 | `mention_all` | boolean | No | Group chats only (v0.12.0+) — mention every participant. Participant JIDs are fetched live from group metadata and attached silently (no `@user` text is appended). Returns `400` for non-group recipients |
+| `link_preview` | boolean | No | Attach a preview card for the first `http(s)` URL in `text` (v0.13.2+). Off by default. See [Link previews](#link-previews) |
+
+### Link previews
+
+WhatsApp only shows a preview card when the sender attaches the page's
+title, description and thumbnail to the message; the recipient's phone
+never fetches the link itself. With `"link_preview": true`, waxum
+fetches the first `http(s)` URL in `text` and attaches:
+
+- the page's Open Graph title and description, falling back to
+  `<title>` and `<meta name="description">`;
+- a JPEG thumbnail of its `og:image`, at most 300 px on the longer side.
+
+The text itself is sent unchanged.
+
+- **SSRF guard.** The fetch uses the same guard as media-by-URL: public addresses only, re-checked on every redirect.
+- **Page limits.** The page is read up to `</head>` (at most 512 KiB), within 5 seconds.
+- **Thumbnail limits.** The image gets its own 3 seconds and 3 MiB. If it is slow, the preview still goes out with title and description only.
+- **Failure.** If nothing usable comes back, the text is sent without a preview. A preview never fails or duplicates a message.
+- **Cache.** Results are cached for 10 minutes, so sending one link to many recipients fetches the page once.
+- **Cloud sessions.** On a [`whatsapp_cloud`](./cloud.md) session the flag maps to Meta's `preview_url`, and Meta builds the preview.
+
+The same `link_preview` flag works on scheduled text sends and on the
+[NATS `text` command](./nats.md).
 
 ### Response
 
