@@ -40,7 +40,8 @@ POST /api/v1/tokens
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | No | Human-readable label, shown in `GET /tokens`. Not security-relevant. |
-| `session_ids` | string[] | Yes | Sessions this token may access. Must be non-empty. |
+| `session_ids` | string[] | One of the two | Sessions this token may access. Each must already exist. |
+| `session_prefixes` | string[] | One of the two | Session-id prefixes this token may use, e.g. `["rq-mkt-"]`. See [Prefix tokens](#prefix-tokens). |
 | `expires_in_hours` | integer | No | Token lifetime. Defaults to 720 (30 days). |
 
 ### Response
@@ -51,6 +52,7 @@ POST /api/v1/tokens
   "token": "eyJhbGciOi...",
   "name": "customer-mobile-app",
   "session_ids": ["my-session"],
+  "session_prefixes": [],
   "expires_at": 1789123456
 }
 ```
@@ -62,13 +64,46 @@ revoke it later.
 A token minted here behaves like the instance's `SUPERADMIN_TOKEN` for
 every endpoint under its bound `session_ids` — same `Authorization: Bearer
 <token>` header — but a request to any *other* session, or to a fleet-wide
-endpoint (`GET /sessions`, `POST /sessions/purge`, `POST /tokens`, etc.),
-gets `403 Forbidden`. It also cannot log into the console — the console is
+endpoint (`POST /sessions/purge`, `POST /tokens`, etc.), gets
+`403 Forbidden`. `GET /sessions` is allowed and returns only the sessions
+the token can reach. It also cannot log into the console — the console is
 a full-fleet admin UI, and a scoped token is deliberately not a superadmin
 credential in that sense.
 
 `404` if any `session_id` in the request doesn't exist on this instance;
-`400` if `session_ids` is empty.
+`400` if both `session_ids` and `session_prefixes` are empty, or a prefix
+is invalid.
+
+### Prefix tokens
+
+*Since v0.13.4.* A token bound to `session_ids` can only reach sessions
+that already exist. `session_prefixes` instead hands out a namespace: the
+token reaches every session whose id starts with one of its prefixes,
+including sessions created later.
+
+```json
+{
+  "name": "marketing-service",
+  "session_prefixes": ["rq-mkt-"],
+  "expires_in_hours": 720
+}
+```
+
+With that token a service can, on its own:
+
+| Request | Result |
+|---------|--------|
+| `POST /sessions` with `"id": "rq-mkt-jakarta"` | Creates the session |
+| `POST /sessions` with `"id": "billing-1"` | `403`, the id is outside the prefix |
+| `GET /sessions` | Lists only `rq-mkt-*` sessions |
+| Anything under `/sessions/rq-mkt-jakarta/...` | Allowed, including `DELETE` |
+| Anything under `/sessions/billing-1/...` | `403` |
+| `POST /sessions/purge`, `/disconnect-all`, `/reconnect-all`, `/tokens` | `403`, still superadmin-only |
+
+A prefix needs at least 3 characters from `A-Z a-z 0-9 - _`, so a prefix
+can never widen a token to every session. `session_ids` and
+`session_prefixes` can be combined in one token. Only a token that has
+prefixes may call `POST /sessions`.
 
 ## List Tokens
 
@@ -85,6 +120,7 @@ GET /api/v1/tokens
       "id": "b6b3f8b0-...",
       "name": "customer-mobile-app",
       "session_ids": ["my-session"],
+      "session_prefixes": [],
       "created_at": "2026-07-28 10:00:00",
       "expires_at": "2026-08-27 10:00:00",
       "revoked": false

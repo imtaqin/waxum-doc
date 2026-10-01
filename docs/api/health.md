@@ -86,7 +86,9 @@ since they come from in-memory state):
 ## `/health` — legacy alias
 
 Same shape as `/livez`, kept as a compatibility alias for existing
-Docker HEALTHCHECK / uptime monitors. New deployments should point at
+Docker HEALTHCHECK / uptime monitors. It is also what
+`waxum --healthcheck` requests: the Docker image has no `curl`, so its
+`HEALTHCHECK` runs the binary itself. New deployments should point at
 `/livez` for liveness and `/readyz` for readiness.
 
 ```
