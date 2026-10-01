@@ -70,6 +70,38 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
 
 To run **without NATS**, remove or comment out the `NATS_URL` line in `.env`.
 
+### What is in the image
+
+Releases after v0.13.4 ship a **distroless** image
+(`gcr.io/distroless/cc-debian12` plus the waxum binary, about 60 MB).
+There is no shell, package manager, `curl` or `gosu` inside it, which
+removes the CVEs those carried. What they did is built into the binary:
+
+- **Non-root.** The container starts as root, chowns the mounted data
+  directories (`WHATSAPP_STORAGE_PATH` and the SQLite directory), then
+  drops to the uid:gid in `WAXUM_RUN_AS` (`1000:1000`) before serving.
+  Volumes written by an older root-running image keep working. Running the
+  container with `--user 1000:1000` works too; nothing is chowned then.
+- **Healthcheck.** The image declares
+  `HEALTHCHECK CMD ["/app/waxum", "--healthcheck"]`, which requests
+  `/health` on `127.0.0.1:$PORT` and exits `0` only on a `200`.
+- **Stop.** `docker stop` ends the process immediately on `SIGTERM`.
+
+If your own compose file or orchestrator defines a healthcheck with
+`curl` or `wget`, switch it, because those binaries no longer exist in
+the image:
+
+```yaml
+healthcheck:
+  test: ["CMD", "/app/waxum", "--healthcheck"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+```
+
+`docker exec ... sh` is gone for the same reason. Use
+`docker logs` and the `/status` diagnostics instead.
+
 ## Build from Source
 
 ### Linux (Ubuntu/Debian)
@@ -254,6 +286,8 @@ POSTGRES_DB=waxum
 | `PORT` | `3451` | Server port |
 | `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
 | `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
+| `STALE_SOCKET_SECS` | `150` | Rebuild a logged-in session whose socket has received nothing for this many seconds (a half-open connection, e.g. after the host's IP changed). `0` disables the check. |
+| `WAXUM_RUN_AS` | *(unset; `1000:1000` in the Docker image)* | `uid:gid` to drop to when started as root. Unset means waxum keeps the user it was started as. |
 
 ### NATS JetStream (Optional)
 
