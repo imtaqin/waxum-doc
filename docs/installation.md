@@ -72,7 +72,7 @@ To run **without NATS**, remove or comment out the `NATS_URL` line in `.env`.
 
 ### What is in the image
 
-Releases after v0.13.4 ship a **distroless** image
+Since v0.13.5 the release ships a **distroless** image
 (`gcr.io/distroless/cc-debian13` plus the waxum binary, about 65 MB).
 There is no shell, package manager, `curl` or `gosu` inside it, which
 removes the CVEs those carried. What they did is built into the binary:
