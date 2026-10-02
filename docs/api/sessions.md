@@ -317,6 +317,10 @@ clears the cooldown and reconnects immediately.
 
 Connect using pair code instead of QR.
 
+Only for a session that is not linked yet. A session that already holds a
+WhatsApp login gets `409` (since v0.13.6 this holds even while it is
+reconnecting); use `POST .../connect` to bring it back online.
+
 ```
 POST /api/v1/sessions/{session_id}/pair
 ```

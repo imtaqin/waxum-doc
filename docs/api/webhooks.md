@@ -222,6 +222,7 @@ breaker is currently OPEN — the entry stays queued in that case.
 | `logged_out` | Logged out from WhatsApp |
 | `qr_code` | QR code generated |
 | `pair_code` | Pair code generated |
+| `pairing_code_error` | A pair-code request failed. `data` has `error` (text), `rejection` (WhatsApp's refusal, e.g. `RateOverlimit`, or `null` when the failure was local), `throttled` (boolean) and `retry_after_seconds` (or `null`). Since v0.13.6; empty before. |
 
 ### Group Events
 

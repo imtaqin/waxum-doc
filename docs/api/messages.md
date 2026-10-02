@@ -97,7 +97,7 @@ fetches the first `http(s)` URL in `text` and attaches:
 The text itself is sent unchanged.
 
 - **SSRF guard.** The fetch uses the same guard as media-by-URL: public addresses only, re-checked on every redirect.
-- **Page limits.** The page is read up to `</head>` (at most 512 KiB), within 5 seconds.
+- **Page limits.** The page is read up to `</head>` (at most 512 KiB), within 5 seconds. Since v0.13.6 the 5 seconds can be changed with `LINK_PREVIEW_PAGE_TIMEOUT_MS` (1000 to 30000) for pages that answer slowly. The send request waits for the preview, so a caller timeout must cover this budget, plus 3 seconds for the thumbnail, plus the send itself.
 - **Thumbnail limits.** The image gets its own 3 seconds and 3 MiB. If it is slow, the preview still goes out with title and description only.
 - **Failure.** If nothing usable comes back, the text is sent without a preview. A preview never fails or duplicates a message.
 - **Cache.** Results are cached for 10 minutes, so sending one link to many recipients fetches the page once.
