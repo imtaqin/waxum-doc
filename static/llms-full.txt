@@ -502,6 +502,7 @@ POSTGRES_DB=waxum
 | `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
 | `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
 | `STALE_SOCKET_SECS` | `150` | Rebuild a logged-in session whose socket has received nothing for this many seconds (a half-open connection, e.g. after the host's IP changed). `0` disables the check. |
+| `LINK_PREVIEW_PAGE_TIMEOUT_MS` | `5000` | How long waxum waits for a page when building a link preview, in milliseconds (1000 to 30000). An invalid value is ignored with a warning. |
 | `WAXUM_RUN_AS` | *(unset; `1000:1000` in the Docker image)* | `uid:gid` to drop to when started as root. Unset means waxum keeps the user it was started as. |
 
 ### NATS JetStream (Optional)
@@ -1073,6 +1074,10 @@ clears the cooldown and reconnects immediately.
 
 Connect using pair code instead of QR.
 
+Only for a session that is not linked yet. A session that already holds a
+WhatsApp login gets `409` (since v0.13.6 this holds even while it is
+reconnecting); use `POST .../connect` to bring it back online.
+
 ```
 POST /api/v1/sessions/{session_id}/pair
 ```
@@ -1480,7 +1485,7 @@ fetches the first `http(s)` URL in `text` and attaches:
 The text itself is sent unchanged.
 
 - **SSRF guard.** The fetch uses the same guard as media-by-URL: public addresses only, re-checked on every redirect.
-- **Page limits.** The page is read up to `</head>` (at most 512 KiB), within 5 seconds.
+- **Page limits.** The page is read up to `</head>` (at most 512 KiB), within 5 seconds. Since v0.13.6 the 5 seconds can be changed with `LINK_PREVIEW_PAGE_TIMEOUT_MS` (1000 to 30000) for pages that answer slowly. The send request waits for the preview, so a caller timeout must cover this budget, plus 3 seconds for the thumbnail, plus the send itself.
 - **Thumbnail limits.** The image gets its own 3 seconds and 3 MiB. If it is slow, the preview still goes out with title and description only.
 - **Failure.** If nothing usable comes back, the text is sent without a preview. A preview never fails or duplicates a message.
 - **Cache.** Results are cached for 10 minutes, so sending one link to many recipients fetches the page once.
@@ -4794,6 +4799,7 @@ breaker is currently OPEN — the entry stays queued in that case.
 | `logged_out` | Logged out from WhatsApp |
 | `qr_code` | QR code generated |
 | `pair_code` | Pair code generated |
+| `pairing_code_error` | A pair-code request failed. `data` has `error` (text), `rejection` (WhatsApp's refusal, e.g. `RateOverlimit`, or `null` when the failure was local), `throttled` (boolean) and `retry_after_seconds` (or `null`). Since v0.13.6; empty before. |
 
 ### Group Events
 

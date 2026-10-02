@@ -287,6 +287,7 @@ POSTGRES_DB=waxum
 | `WHATSAPP_STORAGE_PATH` | `./whatsapp_sessions` | WhatsApp session storage path (SQLite files) |
 | `RUST_LOG` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
 | `STALE_SOCKET_SECS` | `150` | Rebuild a logged-in session whose socket has received nothing for this many seconds (a half-open connection, e.g. after the host's IP changed). `0` disables the check. |
+| `LINK_PREVIEW_PAGE_TIMEOUT_MS` | `5000` | How long waxum waits for a page when building a link preview, in milliseconds (1000 to 30000). An invalid value is ignored with a warning. |
 | `WAXUM_RUN_AS` | *(unset; `1000:1000` in the Docker image)* | `uid:gid` to drop to when started as root. Unset means waxum keeps the user it was started as. |
 
 ### NATS JetStream (Optional)
