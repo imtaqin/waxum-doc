@@ -149,7 +149,8 @@ GET /api/v1/sessions/{session_id}
 
 ## Delete Session
 
-Delete a session and disconnect from WhatsApp.
+Delete a session and everything stored for it. This cannot be undone.
+To unlink the phone and keep the session, use [Log Out](#log-out).
 
 ```
 DELETE /api/v1/sessions/{session_id}
@@ -216,9 +217,18 @@ GET /api/v1/sessions/{session_id}/status
         "enabled": true,
         "receives_messages": true,
         "circuit_open": false,
-        "consecutive_failures": 0
+        "consecutive_failures": 0,
+        "retry_in_seconds": null,
+        "last_error": null,
+        "skipped_while_suspended": 0
       }
-    ]
+    ],
+    "new_chats": {
+      "last_3h": 2,
+      "last_6h": 5,
+      "last_12h": 9,
+      "last_24h": 14
+    }
   }
 }
 ```
@@ -239,7 +249,7 @@ you can see which step stopped:
 | `last_data_received_at` is old | the socket has gone quiet |
 | `client_messages_received` doesn't grow while messages arrive | the client isn't decrypting or dispatching |
 | `client_messages_received` grows but `messages_forwarded` doesn't | waxum isn't forwarding |
-| `messages_forwarded` grows but your server gets nothing | look at `webhooks[]`: `enabled: false` (auto-disabled, [re-enable it](./webhooks.md#re-enable-webhook)), `circuit_open: true`, or `receives_messages: false` |
+| `messages_forwarded` grows but your server gets nothing | look at `webhooks[]`: `circuit_open: true` ([suspended after failed deliveries](./webhooks.md#suspension-after-failed-deliveries); `last_error` says why and `retry_in_seconds` when it is tried again), `enabled: false` (you disabled it), or `receives_messages: false` |
 
 - **`client_*` fields** come from the WhatsApp client. They are `null` when no client is running in this process, and reset whenever it is rebuilt (e.g. by connect).
 - **`messages_forwarded`** counts since the process started.
@@ -354,11 +364,137 @@ field schema and the available platform values.
 
 ## Disconnect Session
 
-Disconnect from WhatsApp without deleting the session.
+Close the connection to WhatsApp. The session stays linked: `connect`
+brings it back without a new QR.
 
 ```
 POST /api/v1/sessions/{session_id}/disconnect
 ```
+
+---
+
+## Log Out
+
+*Since v0.14.0.* Remove waxum from the account's linked devices, and
+keep the session.
+
+```
+POST /api/v1/sessions/{session_id}/logout
+```
+
+The session becomes dormant: its id, webhooks, settings and stored
+messages are kept, only the WhatsApp login is dropped. `connect` then
+shows a fresh QR, and scanning it (or [pairing by code](#pair-with-phone-number))
+continues the same session, with the same number or a different one.
+
+`400` on a `whatsapp_cloud` session, which has no linked device.
+
+### Dormant sessions
+
+A session is never deleted unless you call [Delete Session](#delete-session)
+or the bulk purge. In particular:
+
+- When WhatsApp logs the device out (removed from the phone, or the
+  account is restricted), the session goes dormant the same way as
+  after `logout`. Up to v0.13.6 a repeated logout deleted the session
+  together with its webhooks and history.
+- A dormant session reports `status: "disconnected"`,
+  `is_logged_in: false`.
+- Its webhooks are loaded at startup like any other session's, so they
+  are in place the moment it is linked again.
+
+---
+
+## New-chat Limit
+
+*Since v0.14.0. Linked-device sessions only.*
+
+WhatsApp restricts accounts that start too many conversations with
+numbers they have never talked to, and unlinks every companion device
+when it does. The threshold is not published and differs per account.
+waxum counts what it can see, records the count whenever WhatsApp logs
+the session out, and lets you set a ceiling.
+
+A chat counts as **new** when the session sends to a direct chat it has
+no history with: no earlier send through waxum and no stored message in
+either direction. Groups never count, and neither does replying to
+someone who wrote first.
+
+```
+GET    /api/v1/sessions/{session_id}/settings/new-chat-limit
+PUT    /api/v1/sessions/{session_id}/settings/new-chat-limit
+DELETE /api/v1/sessions/{session_id}/settings/new-chat-limit
+```
+
+### Set a limit
+
+```json
+{
+  "max_new_chats": 40,
+  "window_hours": 24
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `max_new_chats` | integer | Yes | New chats allowed inside the window. At least 1. |
+| `window_hours` | integer | No | Rolling window, 1 to 720. Defaults to 24. |
+
+No limit is set by default, and nothing is refused until you set one.
+`DELETE` removes it; the counting continues either way.
+
+### When the limit is reached
+
+A send to a number the session has no chat with is refused:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 3120
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 429,
+    "message": "New-chat limit reached: 40 new chats per 24 h. Existing chats are not affected. Retry in 3120 s."
+  }
+}
+```
+
+Sends in existing chats, replies and group sends keep working. The
+same applies to sends through NATS.
+
+### Response
+
+All three methods return the current state:
+
+```json
+{
+  "limit": { "max_new_chats": 40, "window_hours": 24 },
+  "new_chats": { "last_3h": 2, "last_6h": 5, "last_12h": 9, "last_24h": 14 },
+  "retry_after_seconds": null,
+  "incidents": [
+    {
+      "occurred_at": 1791422622,
+      "reason": "LoggedOut",
+      "new_chats": { "last_3h": 31, "last_6h": 44, "last_12h": 52, "last_24h": 61 }
+    }
+  ]
+}
+```
+
+`incidents` holds the figures at each logout by WhatsApp, newest first.
+After a few of them you can read this account's threshold off the
+numbers and set the limit below it. The same figures are in
+`diagnostics.new_chats` of [Get Session Status](#get-session-status),
+and in the `account_locked` webhook event.
+
+:::caution
+waxum counts only what is sent through it. Chats started from the phone
+or WhatsApp Web on the same account are not included, so the number
+WhatsApp acts on can be higher than the one reported here.
+:::
 
 ---
 

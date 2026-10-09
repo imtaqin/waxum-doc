@@ -88,10 +88,8 @@ DELETE /api/v1/sessions/{session_id}/webhooks/{webhook_id}
 
 ## Re-enable Webhook
 
-Webhooks are auto-disabled after 100 consecutive delivery failures (see
-[Auto-disable](#circuit-breaker--auto-disable) below). Use this endpoint to flip a
-disabled webhook back to `enabled=true` and clear the disable metadata
-once the target endpoint is fixed.
+Turns a webhook you disabled back on. It takes effect at once and
+clears any suspension on its URL.
 
 ```
 POST /api/v1/sessions/{session_id}/webhooks/{webhook_id}/enable
@@ -108,32 +106,36 @@ POST /api/v1/sessions/{session_id}/webhooks/{webhook_id}/enable
 
 ---
 
-## Circuit Breaker & Auto-disable
+## Suspension after failed deliveries
 
-The dispatcher tracks per-URL delivery failures and reacts in two
-stages so a single dead endpoint can't flood the log or block the
-runtime.
+waxum never removes or disables a webhook on its own. When a receiver
+keeps failing, deliveries to that URL are **suspended** and retried:
 
-- **OPEN (5 min cooldown)** — after 25 consecutive failures the URL
-  enters an OPEN circuit. Dispatch is skipped for 5 minutes; log lines
-  drop to a single `circuit OPEN` warning instead of one per attempt.
-- **Auto-disable (permanent)** — after 100 consecutive failures the
-  webhook row is switched to `enabled=false`, `disabled_at` gets the
-  current timestamp, and `disabled_reason` records the last error
-  string. In-memory registrations pointing at that URL are purged from
-  every session at the same time. The dispatcher will never try the
-  URL again until it is re-enabled via `POST /webhooks/{id}/enable`.
+- After **25 consecutive failed deliveries** the URL is suspended for
+  5 minutes.
+- When the time is up, the next event is delivered as a probe. If it
+  succeeds, delivery resumes. If it fails, the URL is suspended again
+  for twice as long, up to 1 hour.
+- The webhook stays registered, `enabled: true`, and in `GET /webhooks`
+  the whole time.
 
-### Schema columns
+While a URL is suspended, events for it are not attempted. The most
+recent ones are kept in the [dead-letter queue](#retries--dead-letter-queue)
+with `attempts: 0` and can be replayed once the receiver is back.
 
-The `webhooks` table carries two additional columns:
+`GET /sessions/{id}/status` shows the state per webhook under
+`diagnostics.webhooks[]`: `circuit_open`, `consecutive_failures`,
+`retry_in_seconds`, `last_error` and `skipped_while_suspended`. waxum
+also emits `webhook_suspended` and `webhook_resumed` on the console's
+activity feed and in its log.
 
-- `disabled_at` (`TIMESTAMPTZ` / `VARCHAR(30)` / `TEXT` depending on
-  backend) — when the auto-disable fired, `NULL` otherwise
-- `disabled_reason` (`TEXT`) — the last error surfaced before the
-  auto-disable, for later triage
-
-Both are cleared by `POST /webhooks/{id}/enable`.
+:::note Changed in v0.14.0
+Up to v0.13.6 the 100th consecutive failure set `enabled=false` in the
+database and dropped the webhook from memory for good. Failures were
+counted per in-flight request, so one burst of events against a
+receiver that was down for a few seconds was enough. On upgrade, waxum
+re-enables every webhook that was switched off this way.
+:::
 
 ---
 
