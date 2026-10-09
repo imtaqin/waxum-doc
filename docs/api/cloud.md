@@ -28,10 +28,17 @@ integration mostly just needs a different session id to switch.
 Attach Cloud API credentials to a session and flip its provider to
 `whatsapp_cloud`.
 
-From the built-in console at `/` (v0.13.2+), **New Cloud API session**
-creates the session and attaches credentials in one step. The session's
-page then shows the webhook callback URL and the Flow endpoint URL to
-paste into your Meta app.
+From the built-in console at `/`, **New session → Cloud API** creates
+the session and attaches credentials in one step. The session's page
+then shows the webhook callback URL and the Flow endpoint URL to paste
+into your Meta app.
+
+The console marks the two kinds of session apart everywhere (blue
+**Cloud API**, green **WhatsApp Web**). In a session's API explorer the
+endpoints its channel cannot serve are listed last, greyed out, with
+the channel they need: on a Cloud API session that is everything that
+requires a linked device (groups, calls, contacts, presence, QR
+pairing, logout, the new-chat limit).
 
 ```
 POST /api/v1/sessions/{session_id}/cloud/connect
