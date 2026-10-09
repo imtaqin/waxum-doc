@@ -113,15 +113,16 @@ keeps failing, deliveries to that URL are **suspended** and retried:
 
 - After **25 consecutive failed deliveries** the URL is suspended for
   5 minutes.
-- When the time is up, the next event is delivered as a probe. If it
+- When the time is up, exactly one event is delivered as a probe. If it
   succeeds, delivery resumes. If it fails, the URL is suspended again
   for twice as long, up to 1 hour.
 - The webhook stays registered, `enabled: true`, and in `GET /webhooks`
   the whole time.
 
-While a URL is suspended, events for it are not attempted. The most
-recent ones are kept in the [dead-letter queue](#retries--dead-letter-queue)
-with `attempts: 0` and can be replayed once the receiver is back.
+While a URL is suspended, events for it are not attempted and are not
+queued; `skipped_while_suspended` counts them. Deliveries that were
+attempted and failed are in the [dead-letter queue](#retries--dead-letter-queue)
+and can be replayed once the receiver is back.
 
 `GET /sessions/{id}/status` shows the state per webhook under
 `diagnostics.webhooks[]`: `circuit_open`, `consecutive_failures`,

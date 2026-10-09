@@ -462,8 +462,9 @@ Retry-After: 3120
 }
 ```
 
-Sends in existing chats, replies and group sends keep working. The
-same applies to sends through NATS.
+Sends in existing chats, replies and group sends keep working, as do
+edits, reactions and revokes. A send that fails is not counted. Sends
+through NATS follow the same rule and get a failed `send_result`.
 
 ### Response
 
