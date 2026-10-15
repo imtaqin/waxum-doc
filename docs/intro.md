@@ -49,6 +49,7 @@ Waxum is a high-performance WhatsApp REST API Gateway built with Rust. It provid
 - **Contact Lookup** - Check WhatsApp registration, get profiles and user info
 - **Group Management** - Create groups, manage participants, admins, and settings
 - **Privacy Settings** - View privacy configuration
+- **Profile** - Change the linked account name, About text and picture
 - **Blocking** - Block and unblock contacts
 - **Presence** - Set online status and subscribe to presence updates
 - **Chat State** - Send typing and recording indicators
