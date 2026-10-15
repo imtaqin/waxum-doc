@@ -474,6 +474,7 @@ All three methods return the current state:
 {
   "limit": { "max_new_chats": 40, "window_hours": 24 },
   "new_chats": { "last_3h": 2, "last_6h": 5, "last_12h": 9, "last_24h": 14 },
+  "remaining": 26,
   "retry_after_seconds": null,
   "incidents": [
     {
@@ -484,6 +485,9 @@ All three methods return the current state:
   ]
 }
 ```
+
+`remaining` is how many new chats the limit still allows inside its own
+window, never below 0, and `null` when no limit is set.
 
 `incidents` holds the figures at each logout by WhatsApp, newest first.
 After a few of them you can read this account's threshold off the
@@ -496,6 +500,34 @@ waxum counts only what is sent through it. Chats started from the phone
 or WhatsApp Web on the same account are not included, so the number
 WhatsApp acts on can be higher than the one reported here.
 :::
+
+### Check whether a chat exists
+
+```
+GET /api/v1/sessions/{session_id}/chats/{jid}/exists
+```
+
+`jid` is a phone number or a JID. The answer says whether the session
+already has a chat with it, and whether a send there would count as a new
+chat:
+
+```json
+{
+  "jid": "628111111111@s.whatsapp.net",
+  "exists": false,
+  "counts_as_new_chat": true
+}
+```
+
+A chat exists when the session started it through waxum or has any stored
+message with it, in either direction. A phone number is resolved to the
+contact's LID when the session is connected, since history may be stored
+under either. Groups, newsletters and broadcasts never count.
+
+This answers from what waxum has stored. It does not ask WhatsApp whether
+the number is registered; use
+[Check on WhatsApp](contacts.md#check-on-whatsapp) for that. A number that is not on
+WhatsApp still counts as a new chat when a send to it goes through waxum.
 
 ---
 
