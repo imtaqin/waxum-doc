@@ -532,7 +532,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
       "button_params_json": "{\"display_text\":\"Click Me\",\"id\":\"btn1\"}"
     }
   ],
-  "view_once": true,
+  "view_once": false,
   "fake_reply": {
     "type": "text",
     "title": "Quoted header",
@@ -549,7 +549,7 @@ POST /api/v1/sessions/{session_id}/messages/interactive
 | `buttons` | array | Yes | Native flow button items |
 | `reply_to` | string | No | Message ID to reply to |
 | `fake_reply` | object | No | Fabricated quoted-message context. Takes priority over `reply_to`. |
-| `view_once` | boolean | No | Wrap the interactive payload in `viewOnceMessageV2`. **Defaults to `true`** — this is empirically the only reliable way to keep native-flow `quick_reply` buttons clickable on consumer WhatsApp accounts. Set to `false` only when targeting an account that explicitly handles the raw envelope. |
+| `view_once` | boolean | No | Wrap the interactive payload in `viewOnceMessageV2`. **Defaults to `false`.** A wrapped interactive message is accepted by WhatsApp but reaches the phone without its buttons, so leave it off unless you have a reason to wrap it. |
 
 ::: warning Consumer WA Web limitation
 `viewOnceMessageV2`-wrapped interactive messages do **not render** in
