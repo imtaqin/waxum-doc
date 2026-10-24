@@ -26,6 +26,7 @@ PUT /api/v1/sessions/{session_id}/profile
 {
   "name": "Acme Support",
   "about": "Open 09:00-17:00 WIB",
+  "about_emoji": "🕒",
   "picture": { "url": "https://example.com/logo.png" }
 }
 ```
@@ -33,7 +34,8 @@ PUT /api/v1/sessions/{session_id}/profile
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Display name (push name), 1 to 25 characters after trimming |
-| `about` | string | About text, up to 139 characters. An empty string clears it |
+| `about` | string | About text, up to 139 characters. An empty string clears it. It is sent the way WhatsApp Web sends it, with no expiry, so the phone app shows it |
+| `about_emoji` | string | Emoji shown with the About text, up to 8 characters. Needs `about`; ignored when `about` is empty |
 | `picture` | object | `{"url": "..."}` or `{"data": "<base64>", "mimetype": "image/png"}`. Any common image format is accepted; it is centre-cropped to a square and re-encoded as a 640x640 JPEG |
 
 ### Response
